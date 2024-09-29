@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "deploy": "cross-env BASE_PATH=/personal-blog && npm run build",
+    "deploy": "cross-env BASE_PATH=/personal-blog npm run build",
     "start": "next start",
     "lint": "next lint"
   },
