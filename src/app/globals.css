@@ -2,21 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: black;
+  background-image: linear-gradient(
+    45deg,
+    hsl(76deg 100% 62%) 0%,
+    hsl(59deg 88% 54%) 8%,
+    hsl(50deg 100% 57%) 17%,
+    hsl(42deg 100% 61%) 25%,
+    hsl(32deg 100% 66%) 33%,
+    hsl(19deg 100% 72%) 42%,
+    hsl(0deg 100% 77%) 50%,
+    hsl(342deg 100% 75%) 58%,
+    hsl(329deg 100% 75%) 67%,
+    hsl(318deg 100% 75%) 75%,
+    hsl(301deg 74% 73%) 83%,
+    hsl(272deg 86% 76%) 92%,
+    hsl(243deg 93% 78%) 100%
+  );
+  height: 100svh;
   font-family: Arial, Helvetica, sans-serif;
 }
 
