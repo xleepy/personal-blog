@@ -1,6 +1,6 @@
 "use client";
-import Welcome from "./markdown.mdx";
+import About from "@/markdown/about.mdx";
 
 export default function Page() {
-  return <Welcome />;
+  return <About />;
 }
