@@ -15,18 +15,11 @@
     "plugins": [
       {
         "name": "next"
-      },
-      {
-        "name": "@mdx-js/typescript-plugin"
       }
     ],
     "paths": {
       "@/*": ["./src/*"]
     }
-  },
-  "mdx": {
-    // Enable strict type checking in MDX files.
-    "checkMdx": true
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
