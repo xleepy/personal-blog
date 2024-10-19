@@ -22,10 +22,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${roboto.variable} antialiased container mx-auto `}>
+    <html lang="en" className="h-full w-full">
+      <body
+        className={`${roboto.variable} antialiased container mx-auto bg-slate-800 h-full text-white flex flex-col`}
+      >
         <Header />
-        {children}
+        <main className="h-full w-full">{children}</main>
       </body>
     </html>
   );
