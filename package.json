@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "deploy": "cross-env BASE_PATH=/personal-blog npm run build",
-    "start": "next start",
+    "start": "npx serve@latest out",
     "lint": "next lint"
   },
   "dependencies": {
@@ -28,6 +28,7 @@
     "cross-env": "^7.0.3",
     "eslint": "^8",
     "eslint-config-next": "14.2.13",
+    "gray-matter": "^4.0.3",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"

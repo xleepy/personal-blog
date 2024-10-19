@@ -1,10 +1,18 @@
-import { AlertTriangle } from "react-feather";
+import { getBlogPostList } from "@/utilts/fileUtils";
+import Link from "next/link";
 
-export default function Home() {
+export default async function Home() {
+  const posts = await getBlogPostList();
+
   return (
-    <div className="flex justify-center items-center h-full w-full">
-      <AlertTriangle color="yellow" />
-      <h1>Under construction </h1>
-    </div>
+    <ul className="">
+      {posts.map((post, idx) => {
+        return (
+          <li key={idx}>
+            <Link href={post.path}>{post.title}</Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
