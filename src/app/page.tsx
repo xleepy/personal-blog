@@ -5,7 +5,7 @@ export default async function Home() {
   const posts = await getBlogPostList();
 
   return (
-    <ul className="">
+    <ul>
       {posts.map((post, idx) => {
         return (
           <li key={idx}>
