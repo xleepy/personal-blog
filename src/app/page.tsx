@@ -5,7 +5,7 @@ export default async function Home() {
   const posts = await getBlogPostList();
 
   return (
-    <ul>
+    <ul className="flex flex-col gap-y-2">
       {posts.map((post, idx) => {
         return (
           <li key={idx}>
