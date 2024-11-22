@@ -13,18 +13,23 @@ export async function getBlogPostList(): Promise<Post[]> {
   const blogPosts = [];
 
   for (const fileName of fileNames) {
-    const rawContent = await readFile(`src/markdown/posts/${fileName}`);
-
-    const { data: frontmatter } = matter(rawContent);
+    const metadata = await getPostMetadata(fileName);
 
     blogPosts.push({
       slug: fileName.replace(".mdx", ""),
-      ...frontmatter,
+      ...metadata,
     });
   }
 
   return blogPosts as unknown as Post[];
 }
+
+export const getPostMetadata = async (post: string) => {
+  const rawContent = await readFile(`src/markdown/posts/${post}`);
+
+  const { data: frontmatter } = matter(rawContent);
+  return frontmatter;
+};
 
 export function readFile(localPath: string) {
   return fs.readFile(path.join(process.cwd(), localPath), "utf8");

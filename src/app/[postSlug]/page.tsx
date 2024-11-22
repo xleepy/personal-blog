@@ -1,24 +1,27 @@
-import PomodoroPost, { frontmatter } from "@/markdown/posts/pomodoro.mdx";
-import { getBlogPostList } from "@/utilts/fileUtils";
+import { getBlogPostList, getPostMetadata } from "@/utilts/fileUtils";
 import { MDXProps } from "mdx/types";
-import { ReactNode } from "react";
-
-export const metadata = {
-  title: frontmatter.title,
-};
+import { lazy, ReactNode, Suspense } from "react";
 
 const ComponentsMap: Record<string, (props: MDXProps) => ReactNode> = {
-  pomodoro: PomodoroPost,
+  pomodoro: lazy(() => import("@/markdown/posts/pomodoro.mdx")),
 };
 
-export default async function Page({
-  params,
-}: {
-  params: { postSlug: string };
-}) {
+type Params = {
+  postSlug: string;
+};
+
+type Props = {
+  params: Params;
+};
+
+export default async function Page({ params }: Props) {
   const { postSlug } = await params;
   const Component = ComponentsMap[postSlug];
-  return <Component />;
+  return (
+    <Suspense fallback={"Loading..."}>
+      <Component />
+    </Suspense>
+  );
 }
 
 // Return a list of `params` to populate the [slug] dynamic segment
@@ -28,4 +31,12 @@ export async function generateStaticParams() {
   return posts.map((post) => ({
     postSlug: post.path,
   }));
+}
+
+export async function generateMetadata({ params }: Props) {
+  const { postSlug } = await params;
+  const metadata = await getPostMetadata(`${postSlug}.mdx`);
+  return {
+    title: metadata.title,
+  };
 }
