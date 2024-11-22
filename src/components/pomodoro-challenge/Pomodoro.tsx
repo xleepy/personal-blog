@@ -1,22 +1,16 @@
 "use client";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 // https://reactpractice.dev/exercise/build-a-pomodoro-app
 
 const Pomodoro = () => {
   const [time, setTime] = useState<Date>(new Date(25 * 60 * 1000));
   const [isRunning, setIsRunning] = useState(false);
-  const intervalIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    return () => {
-      if (intervalIdRef.current) {
-        clearInterval(intervalIdRef.current);
-      }
-    };
-  }, []);
-
-  const startTimer = () => {
-    intervalIdRef.current = window.setInterval(() => {
+    if (!isRunning) {
+      return;
+    }
+    const intervalId = setInterval(() => {
       setTime((state) => {
         const newTime = new Date(state.getTime() - 1000);
         if (newTime.getTime() <= 0) {
@@ -26,15 +20,16 @@ const Pomodoro = () => {
         return newTime;
       });
     }, 1000);
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isRunning]);
 
+  const startTimer = () => {
     setIsRunning(true);
   };
 
   const stopTimer = () => {
-    if (intervalIdRef.current) {
-      clearInterval(intervalIdRef.current);
-    }
-    intervalIdRef.current = null;
     setIsRunning(false);
   };
 
