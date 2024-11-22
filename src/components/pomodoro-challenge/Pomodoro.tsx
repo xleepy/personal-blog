@@ -10,16 +10,18 @@ const Pomodoro = () => {
     if (!isRunning) {
       return;
     }
+    const timeInterval = 1000;
     const intervalId = setInterval(() => {
       setTime((state) => {
-        const newTime = new Date(state.getTime() - 1000);
+        const newTime = new Date(state.getTime() - timeInterval);
         if (newTime.getTime() <= 0) {
           setIsRunning(false);
           return new Date(25 * 60 * 1000);
         }
         return newTime;
       });
-    }, 1000);
+    }, timeInterval);
+
     return () => {
       clearInterval(intervalId);
     };
