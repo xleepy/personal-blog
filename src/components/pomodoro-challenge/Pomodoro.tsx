@@ -10,7 +10,9 @@ type Session = {
   timeInMinutes: number;
 };
 
-const SESSIONS: Session[] = [
+const MAX_SESSIONS = 4;
+
+const SESSION = [
   {
     label: "focus time",
     timeInMinutes: 25,
@@ -25,15 +27,26 @@ const SESSIONS: Session[] = [
   },
 ];
 
-const MAX_SESSIONS = SESSIONS.length;
+const SESSION_STEPS = SESSION.length;
+
+const SESSIONS: Session[][] = Array.from({ length: MAX_SESSIONS }, () => {
+  return SESSION;
+});
 
 const Pomodoro = () => {
   const [currentSessionIdx, setCurrentSessionIdx] = useState(0);
+  const [currentSessionTypeIdx, setCurrentSessionTypeIdx] = useState(0);
 
-  const { label, timeInMinutes } = SESSIONS[currentSessionIdx];
+  const { label, timeInMinutes } =
+    SESSIONS[currentSessionIdx][currentSessionTypeIdx];
 
   const moveToNextSession = () => {
-    setCurrentSessionIdx((currentSessionIdx + 1) % MAX_SESSIONS);
+    if (currentSessionTypeIdx === SESSION_STEPS - 1) {
+      setCurrentSessionIdx((currentSessionIdx + 1) % MAX_SESSIONS);
+      setCurrentSessionTypeIdx(0);
+      return;
+    }
+    setCurrentSessionTypeIdx(currentSessionTypeIdx + 1);
   };
 
   return (
