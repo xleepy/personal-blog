@@ -26,7 +26,7 @@ export async function getBlogPostList(): Promise<Post[]> {
   return blogPosts as unknown as Post[];
 }
 
-function readFile(localPath: string) {
+export function readFile(localPath: string) {
   return fs.readFile(path.join(process.cwd(), localPath), "utf8");
 }
 

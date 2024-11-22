@@ -1,9 +1,15 @@
 import { PropsWithChildren } from "react";
-import { Code as BrightCode } from "bright";
+import { Code as BrightCode, BrightProps } from "bright";
 import theme from "./theme";
 
-const Code = ({ children }: PropsWithChildren) => {
-  return <BrightCode theme={theme}>{children}</BrightCode>;
+export type CodeProps = Partial<BrightProps> & PropsWithChildren;
+
+const Code = ({ children, ...rest }: CodeProps) => {
+  return (
+    <BrightCode {...rest} theme={theme}>
+      {children}
+    </BrightCode>
+  );
 };
 
 export default Code;
