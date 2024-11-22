@@ -55,7 +55,7 @@ const Pomodoro = () => {
         currentSessionIdx + 1
       } of ${MAX_SESSIONS} (${label})`}</h1>
       <Timer
-        key={currentSessionIdx}
+        key={`${currentSessionIdx}-${currentSessionTypeIdx}`}
         duration={timeInMinutes}
         onComplete={moveToNextSession}
         label={label}
