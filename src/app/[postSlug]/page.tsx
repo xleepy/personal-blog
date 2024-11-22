@@ -11,7 +11,7 @@ type Params = {
 };
 
 type Props = {
-  params: Params;
+  params: Promise<Params>;
 };
 
 export default async function Page({ params }: Props) {
