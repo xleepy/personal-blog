@@ -43,20 +43,22 @@ const Pomodoro = () => {
   };
 
   return (
-    <div className="border-black border-solid">
-      <h1>{`${time.getMinutes()}-${time
-        .getSeconds()
-        .toString()
-        .padEnd(2, "0")}`}</h1>
+    <div className="flex justify-center px-2">
+      <div className="border-white border-solid border max-w-md flex-1 flex flex-col items-center p-4 gap-y-2 rounded-sm">
+        <h1>{`${time.getMinutes()}-${time
+          .getSeconds()
+          .toString()
+          .padEnd(2, "0")}`}</h1>
 
-      <div className="flex gap-x-2">
-        {isRunning && (
-          <Fragment>
-            <button onClick={restartTimer}>Restart</button>
-            <button onClick={pauseTimer}>Pause</button>
-          </Fragment>
-        )}
-        {!isRunning && <button onClick={startTimer}>Start</button>}
+        <div className="flex gap-x-2">
+          {isRunning && (
+            <Fragment>
+              <button onClick={restartTimer}>Restart</button>
+              <button onClick={pauseTimer}>Pause</button>
+            </Fragment>
+          )}
+          {!isRunning && <button onClick={startTimer}>Start</button>}
+        </div>
       </div>
     </div>
   );

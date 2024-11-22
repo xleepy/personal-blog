@@ -27,7 +27,7 @@ export default function RootLayout({
         className={`${roboto.variable} antialiased container mx-auto bg-slate-800 h-full text-white flex flex-col`}
       >
         <Header />
-        <main className="h-full w-full">{children}</main>
+        <main className="h-full w-full pt-8">{children}</main>
       </body>
     </html>
   );

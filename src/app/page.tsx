@@ -5,14 +5,21 @@ export default async function Home() {
   const posts = await getBlogPostList();
 
   return (
-    <ul className="flex flex-col gap-y-2">
-      {posts.map((post, idx) => {
-        return (
-          <li key={idx}>
-            <Link href={post.path}>{post.title}</Link>
-          </li>
-        );
-      })}
-    </ul>
+    <section>
+      <h1 className="text-lg font-bold">Recent posts:</h1>
+      <ul className="flex flex-col gap-y-2 mt-3">
+        {posts.map((post) => {
+          return (
+            <Link
+              href={post.path}
+              className="bg-white h-full text-black p-4 rounded-sm"
+              key={post.path}
+            >
+              {post.title}
+            </Link>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
