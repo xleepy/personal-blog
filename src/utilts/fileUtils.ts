@@ -5,19 +5,26 @@ import matter from "gray-matter";
 type Post = {
   title: string;
   path: string;
+  createdAt: Date;
+  modifiedAt: Date;
 };
 
 export async function getBlogPostList(): Promise<Post[]> {
   const fileNames = await readDirectory("src/markdown/posts");
 
-  const blogPosts = [];
+  const blogPosts: Post[] = [];
 
   for (const fileName of fileNames) {
     const metadata = await getPostMetadata(fileName);
+    const stats = await readFileMetadata(`src/markdown/posts/${fileName}`);
+    const createdAt = new Date(stats.birthtime);
+    const modifiedAt = new Date(stats.mtime);
 
     blogPosts.push({
-      slug: fileName.replace(".mdx", ""),
-      ...metadata,
+      title: metadata.title,
+      path: fileName.replace(".mdx", ""),
+      createdAt,
+      modifiedAt,
     });
   }
 
@@ -30,6 +37,10 @@ export const getPostMetadata = async (post: string) => {
   const { data: frontmatter } = matter(rawContent);
   return frontmatter;
 };
+
+function readFileMetadata(localPath: string) {
+  return fs.stat(path.join(process.cwd(), localPath), {});
+}
 
 export function readFile(localPath: string) {
   return fs.readFile(path.join(process.cwd(), localPath), "utf8");

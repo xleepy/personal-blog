@@ -4,6 +4,7 @@ import { lazy, ReactNode, Suspense } from "react";
 
 const ComponentsMap: Record<string, (props: MDXProps) => ReactNode> = {
   pomodoro: lazy(() => import("@/markdown/posts/pomodoro.mdx")),
+  holidays: lazy(() => import("@/markdown/posts/holidays.mdx")),
 };
 
 type Params = {
