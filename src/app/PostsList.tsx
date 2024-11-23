@@ -8,7 +8,7 @@ type PostsListProps = {
 };
 
 export const PostsList = ({ posts }: PostsListProps) => {
-  const postsByLastModified = posts.toSorted((a, b) => {
+  const postsByLastModified = posts.slice().sort((a, b) => {
     return b.modifiedAt.getTime() - a.modifiedAt.getTime();
   });
 
