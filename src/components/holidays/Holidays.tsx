@@ -5,6 +5,8 @@ import { Suspense, use, useMemo } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { AlertTriangle } from "react-feather";
 
+export const dynamic = "force-dynamic";
+
 type HolidaysListProps = {
   holidaysPromise: Promise<HolidayResponse[]>;
 };
@@ -53,10 +55,9 @@ const HolidaysApp = () => {
   }, [holidaysApi]);
 
   return (
-    <section>
-      <h1>
-        {" "}
-        <AlertTriangle /> WIP: Holiday challenge from{" "}
+    <section className="flex flex-col gap-4">
+      <h1 className="flex gap-2">
+        <AlertTriangle /> WIP: Holiday challenge from
         <Link
           target="_blank"
           href="https://reactpractice.dev/exercise/build-a-public-holidays-app/"
