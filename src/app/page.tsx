@@ -1,10 +1,12 @@
-import { getBlogPostList } from "@/utilts/fileUtils";
+import { getBlogPostList, Post } from "@/utilts/fileUtils";
 import Link from "next/link";
 
-export default async function Home() {
-  const posts = await getBlogPostList();
+type HomeProps = {
+  posts: Post[];
+};
 
-  const postsByLastModified = (posts ?? []).toSorted((a, b) => {
+export default async function Home({ posts }: HomeProps) {
+  const postsByLastModified = posts.toSorted((a, b) => {
     return b.modifiedAt.getTime() - a.modifiedAt.getTime();
   });
 
@@ -27,4 +29,16 @@ export default async function Home() {
       </ul>
     </section>
   );
+}
+
+export async function getStaticProps() {
+  const posts = await getBlogPostList();
+  if (!posts) {
+    return {
+      notFound: true,
+    };
+  }
+  return {
+    props: { posts },
+  };
 }
