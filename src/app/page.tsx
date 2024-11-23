@@ -1,16 +1,12 @@
 import { getBlogPostList } from "@/utilts/fileUtils";
 import Link from "next/link";
-import { useRouter } from "next/router";
 
 export default async function Home() {
-  const router = useRouter();
   const posts = await getBlogPostList();
+  // dummy static issue in github actions build
+  const postsToUse = Array.isArray(posts) ? posts : [];
 
-  if (router.isFallback) {
-    return <p>Loading...</p>;
-  }
-
-  const postsByLastModified = (posts ?? []).toSorted((a, b) => {
+  const postsByLastModified = postsToUse.toSorted((a, b) => {
     return b.modifiedAt.getTime() - a.modifiedAt.getTime();
   });
 
