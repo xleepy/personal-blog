@@ -5,17 +5,12 @@ import { Suspense, use, useMemo } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { AlertTriangle } from "react-feather";
 
-export const dynamic = "force-dynamic";
-
 type HolidaysListProps = {
   holidaysPromise: Promise<HolidayResponse[]>;
 };
 
 const HolidaysList = ({ holidaysPromise }: HolidaysListProps) => {
   const holidays = use(holidaysPromise);
-
-  console.log("resp", holidays);
-
   return (
     <ul>
       {holidays?.map((holiday) => (
