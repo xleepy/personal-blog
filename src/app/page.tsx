@@ -21,7 +21,7 @@ export default async function Home() {
               key={post.path}
             >
               <p>{post.title}</p>
-              <p>{`Last modified at ${post.createdAt.toLocaleDateString()}`}</p>
+              <p>{`Last modified at ${post.modifiedAt.toDateString()}`}</p>
             </Link>
           );
         })}
