@@ -1,3 +1,4 @@
+import { SUBPATH } from "@/constants";
 import Link from "next/link";
 import { GitHub } from "react-feather";
 
@@ -7,9 +8,9 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <div className="flex">
+    <div className="flex gap-2">
       <div className="flex-none">
-        <img src="/images/avatar.png" alt="Avatar" />
+        <img src={`${SUBPATH}/images/avatar.png`} alt="Avatar" />
       </div>
       <div className="flex-1 px-3 flex flex-col gap-2">
         <h1 className="text-2xl font-bold">About me</h1>
