@@ -1,10 +1,10 @@
 "use client";
-import { Configuration, HolidayResponse, HolidaysApi } from "@/api/holidays";
-import Link from "next/link";
-import { Suspense, use, useMemo } from "react";
+import { CountryResponse, HolidayResponse } from "@/api/holidays";
+import { Suspense, use, useMemo, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { AlertTriangle } from "react-feather";
+import { HolidaysApiProvider, useHolidaysApi } from "./HolidaysApiProvider";
 
+// https://reactpractice.dev/exercise/build-a-public-holidays-app/
 type HolidaysListProps = {
   holidaysPromise: Promise<HolidayResponse[]>;
 };
@@ -12,10 +12,16 @@ type HolidaysListProps = {
 const HolidaysList = ({ holidaysPromise }: HolidaysListProps) => {
   const holidays = use(holidaysPromise);
   return (
-    <ul>
-      {holidays?.map((holiday) => (
-        <li key={holiday.id}>{holiday.name.at(0)?.text}</li>
-      ))}
+    <ul className="mx-auto">
+      {holidays?.map(({ name, startDate, id }) => {
+        const enLocalizedName =
+          name.find(({ language }) => language === "EN") ?? name[0];
+        return (
+          <li key={id}>{`${startDate.toDateString()} - ${
+            enLocalizedName.text
+          }`}</li>
+        );
+      })}
     </ul>
   );
 };
@@ -33,35 +39,82 @@ export const Fallback = ({ error }: FallbackProps) => {
   );
 };
 
-const HolidaysApp = () => {
-  const holidaysApi = useMemo(() => {
-    return new HolidaysApi(
-      new Configuration({ basePath: "https://openholidaysapi.org" })
-    );
+type CountrySelectorProps = {
+  countriesPromise: Promise<CountryResponse[]>;
+  initialCountryIsoCode: string;
+  onCountrySelect?: (isoCode: string) => void;
+};
+
+const CountrySelector = ({
+  countriesPromise,
+  initialCountryIsoCode,
+  onCountrySelect,
+}: CountrySelectorProps) => {
+  const countries = use(countriesPromise);
+
+  return (
+    <select
+      className="bg-black"
+      defaultValue={initialCountryIsoCode}
+      onChange={(event) => {
+        onCountrySelect?.(event.target.value);
+      }}
+    >
+      {countries.map(({ isoCode, name }) => {
+        const [localizedName] = name;
+        return (
+          <option key={isoCode} value={isoCode}>
+            {localizedName.text}
+          </option>
+        );
+      })}
+    </select>
+  );
+};
+
+const Countries = ({
+  onCountrySelect,
+  initialCountryIsoCode,
+}: Pick<CountrySelectorProps, "onCountrySelect" | "initialCountryIsoCode">) => {
+  const allCountriesPromise = useMemo(() => {
+    return fetch("https://openholidaysapi.org/Countries", {
+      headers: {
+        Accept: "application/json",
+      },
+    }).then((response) => response.json());
   }, []);
+
+  return (
+    <Suspense fallback={"Loading..."}>
+      <CountrySelector
+        initialCountryIsoCode={initialCountryIsoCode}
+        onCountrySelect={onCountrySelect}
+        countriesPromise={allCountriesPromise}
+      />
+    </Suspense>
+  );
+};
+
+const HolidaysApp = () => {
+  const holidaysApi = useHolidaysApi();
+  const [countryIsoCode, setCountryIsoCode] = useState("DE");
 
   const holidaysPromise = useMemo(() => {
     return holidaysApi.publicHolidaysGet({
-      countryIsoCode: "DE",
+      countryIsoCode: countryIsoCode,
       validFrom: new Date(new Date().getFullYear(), 0, 1),
       validTo: new Date(new Date().getFullYear(), 11, 31),
-      subdivisionCode: "DE-BE",
     });
-  }, [holidaysApi]);
+  }, [holidaysApi, countryIsoCode]);
 
   return (
-    <section className="flex flex-col gap-4">
-      <h1 className="flex gap-2">
-        <AlertTriangle /> WIP: Holiday challenge from
-        <Link
-          target="_blank"
-          href="https://reactpractice.dev/exercise/build-a-public-holidays-app/"
-        >
-          reactpractive
-        </Link>
-      </h1>
+    <section className="flex flex-col gap-4 min-h-64">
+      <Countries
+        initialCountryIsoCode={countryIsoCode}
+        onCountrySelect={setCountryIsoCode}
+      />
       <ErrorBoundary FallbackComponent={Fallback}>
-        <Suspense>
+        <Suspense fallback={"Loading..."}>
           <HolidaysList holidaysPromise={holidaysPromise} />
         </Suspense>
       </ErrorBoundary>
@@ -69,4 +122,12 @@ const HolidaysApp = () => {
   );
 };
 
-export default HolidaysApp;
+const HolidaysAppWithProvider = () => {
+  return (
+    <HolidaysApiProvider>
+      <HolidaysApp />
+    </HolidaysApiProvider>
+  );
+};
+
+export default HolidaysAppWithProvider;
