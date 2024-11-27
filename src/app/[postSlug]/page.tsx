@@ -1,10 +1,14 @@
 import { getBlogPostList, getPostMetadata } from "@/utilts/fileUtils";
-import { MDXProps } from "mdx/types";
-import { lazy, ReactNode, Suspense } from "react";
+import { lazy, Suspense } from "react";
 
-const ComponentsMap: Record<string, (props: MDXProps) => ReactNode> = {
-  pomodoro: lazy(() => import("@/markdown/posts/pomodoro.mdx")),
-  holidays: lazy(() => import("@/markdown/posts/holidays.mdx")),
+const getComponentsMap = async () => {
+  const posts = await getBlogPostList();
+  return Object.fromEntries(
+    posts.map((post) => [
+      post.path,
+      lazy(() => import(`@/markdown/posts/${post.path}.mdx`)),
+    ])
+  );
 };
 
 type Params = {
@@ -17,6 +21,7 @@ type Props = {
 
 export default async function Page({ params }: Props) {
   const { postSlug } = await params;
+  const ComponentsMap = await getComponentsMap();
   const Component = ComponentsMap[postSlug];
   return (
     <Suspense fallback={"Loading..."}>
