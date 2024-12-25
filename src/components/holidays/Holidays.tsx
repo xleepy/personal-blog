@@ -52,6 +52,11 @@ const CountrySelector = ({
 }: CountrySelectorProps) => {
   const countries = use(countriesPromise);
 
+  if (!Array.isArray(countries)) {
+    const error = countries as any;
+    throw new Error(`${error.status} - ${error.title}`);
+  }
+
   return (
     <select
       className="bg-black"
@@ -60,7 +65,7 @@ const CountrySelector = ({
         onCountrySelect?.(event.target.value);
       }}
     >
-      {countries.map(({ isoCode, name }) => {
+      {countries?.map(({ isoCode, name }) => {
         const [localizedName] = name;
         return (
           <option key={isoCode} value={isoCode}>
@@ -85,13 +90,15 @@ const Countries = ({
   }, []);
 
   return (
-    <Suspense fallback={"Loading..."}>
-      <CountrySelector
-        initialCountryIsoCode={initialCountryIsoCode}
-        onCountrySelect={onCountrySelect}
-        countriesPromise={allCountriesPromise}
-      />
-    </Suspense>
+    <ErrorBoundary FallbackComponent={Fallback}>
+      <Suspense fallback={"Loading..."}>
+        <CountrySelector
+          initialCountryIsoCode={initialCountryIsoCode}
+          onCountrySelect={onCountrySelect}
+          countriesPromise={allCountriesPromise}
+        />
+      </Suspense>
+    </ErrorBoundary>
   );
 };
 
