@@ -7,25 +7,28 @@
     "build": "next build",
     "deploy": "cross-env BASE_PATH=/personal-blog npm run build",
     "start": "npx serve@latest out",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-holidays-api": "openapi-generator-cli generate -i https://openholidaysapi.org/swagger/v1/swagger.json -g typescript-fetch -o ./src/api/holidays"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "15.3.0",
-    "bright": "^0.8.5",
+    "bright": "1.0.0",
     "next": "15.3.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-error-boundary": "^5.0.0",
     "react-feather": "^2.0.10",
     "remark-frontmatter": "^5.0.0",
     "remark-mdx-frontmatter": "^5.0.0"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.15.3",
     "@types/mdx": "^2.0.13",
     "@types/node": "^20",
-    "@types/react": "19.1.2",
-    "@types/react-dom": "19.1.2",
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.0",
     "cross-env": "^7.0.3",
     "eslint": "^8",
     "eslint-config-next": "15.3.0",
@@ -36,7 +39,7 @@
     "typescript": "^5"
   },
   "overrides": {
-    "@types/react": "19.1.2",
-    "@types/react-dom": "19.1.2"
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.0"
   }
 }
