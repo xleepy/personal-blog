@@ -53,6 +53,7 @@ const CountrySelector = ({
   const countries = use(countriesPromise);
 
   if (!Array.isArray(countries)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const error = countries as any;
     throw new Error(`${error.status} - ${error.title}`);
   }

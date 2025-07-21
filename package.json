@@ -13,12 +13,12 @@
   "dependencies": {
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
-    "@next/mdx": "^15.0.3",
-    "bright": "^0.8.5",
-    "next": "^15.0.3",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-error-boundary": "^4.1.2",
+    "@next/mdx": "15.3.0",
+    "bright": "1.0.0",
+    "next": "15.3.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-error-boundary": "^5.0.0",
     "react-feather": "^2.0.10",
     "remark-frontmatter": "^5.0.0",
     "remark-mdx-frontmatter": "^5.0.0"
@@ -27,15 +27,19 @@
     "@openapitools/openapi-generator-cli": "^2.15.3",
     "@types/mdx": "^2.0.13",
     "@types/node": "^20",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.0",
     "cross-env": "^7.0.3",
     "eslint": "^8",
-    "eslint-config-next": "14.2.13",
+    "eslint-config-next": "15.3.0",
     "eslint-plugin-mdx": "^3.1.5",
     "gray-matter": "^4.0.3",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.0"
   }
 }
