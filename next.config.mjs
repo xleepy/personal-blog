@@ -8,6 +8,9 @@ const nextConfig = {
   basePath: process.env.BASE_PATH,
   // Configure `pageExtensions` to include markdown and MDX files
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
+  images: {
+    unoptimized: true, // Disable image optimization for static export
+  },
 };
 
 const withMDX = createMDX({
