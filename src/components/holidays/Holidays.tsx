@@ -17,9 +17,8 @@ const HolidaysList = ({ holidaysPromise }: HolidaysListProps) => {
         const enLocalizedName =
           name.find(({ language }) => language === "EN") ?? name[0];
         return (
-          <li key={id}>{`${startDate.toDateString()} - ${
-            enLocalizedName.text
-          }`}</li>
+          <li key={id}>{`${startDate.toDateString()} - ${enLocalizedName.text
+            }`}</li>
         );
       })}
     </ul>
@@ -60,7 +59,6 @@ const CountrySelector = ({
 
   return (
     <select
-      className="bg-black"
       defaultValue={initialCountryIsoCode}
       onChange={(event) => {
         onCountrySelect?.(event.target.value);
