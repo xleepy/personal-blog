@@ -4,6 +4,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { Group, MeshLambertMaterial, Object3DEventMap, } from "three";
 
+
 function Sky() {
   const cloud0 = useRef<Group<Object3DEventMap>>(null);
   const cloud1 = useRef<Group<Object3DEventMap>>(null);
@@ -12,12 +13,18 @@ function Sky() {
   const cloud4 = useRef<Group<Object3DEventMap>>(null);
   const cloud5 = useRef<Group<Object3DEventMap>>(null);
 
-  useFrame(() => {
+  useFrame((state) => {
     const clouds = [cloud0.current, cloud1.current, cloud2.current, cloud3.current, cloud4.current, cloud5.current].filter(Boolean) as Group<Object3DEventMap>[];
+    const { height, width } = state.viewport
+    const widthWithMargin = width + 5;
     clouds.forEach((cloud, index) => {
       const targetPosition = cloud.position.clone()
-      targetPosition.x += (Math.sin(Date.now() / 1000 + index) * 0.01) + index * 0.01;
-      cloud.position.lerp(targetPosition, 0.2);
+      targetPosition.x += 0.05 + index * 0.01;
+      if (targetPosition.x > widthWithMargin) {
+        targetPosition.y = height * (0.5 - Math.random());
+        targetPosition.x = -widthWithMargin;
+      }
+      cloud.position.lerp(targetPosition, 0.01);
     })
   })
 
