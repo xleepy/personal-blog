@@ -9,6 +9,7 @@ Personal blog built with Next.js 15 (App Router), React 19, TypeScript 5, and Ta
 - **Framework:** Next.js 16.2.6 (App Router, static export, Turbopack)
 - **Language:** TypeScript 5.9 (strict mode)
 - **UI:** React 19.2, Tailwind CSS 4
+- **3D Graphics:** @react-three/fiber, @react-three/drei, three.js
 - **Content:** MDX with `remark-frontmatter` / `remark-mdx-frontmatter`, `gray-matter` for metadata
 - **API Client:** OpenAPI-generated (`typescript-fetch`) for holidays API
 - **Font:** Roboto via `next/font/google`
@@ -36,6 +37,17 @@ src/
     about/          # About page
     [postSlug]/     # Dynamic blog post route
   components/       # React components
+    AppCanvas.tsx   # Main 3D canvas wrapper
+    canvas/         # 3D scene components (weather, sky, rain)
+      types.ts      # Type definitions for weather/time visuals
+      constants.ts  # Weather and time-of-day visual configs
+      utils.ts      # Time calculation and color blending
+      SceneBackground.tsx  # Dynamic sky background
+      Sky.tsx       # Cloud rendering and animation
+      Rain.tsx      # Rain particle system
+      index.ts      # Barrel exports
+  hooks/            # Custom React hooks
+    useWeather.ts   # Weather data fetching
   markdown/         # MDX blog posts and content
     posts/          # Individual blog post .mdx files
   api/              # Generated API clients (do not edit manually)
@@ -54,6 +66,8 @@ src/
 - Tailwind 4 config is CSS-based (no `tailwind.config.ts`); customizations in `src/app/globals.css`
 - ESLint 9 uses flat config (`eslint.config.mjs`)
 - Components use named exports for pages (`export default async function Page`)
+- 3D canvas components in `src/components/canvas/` handle weather-based visuals (clouds, rain, sky colors) that blend with time-of-day effects (sunrise, sunset, night)
+- Weather data fetched via `useWeather` hook; time-of-day calculated client-side based on local time and season
 
 ## Deployment
 
