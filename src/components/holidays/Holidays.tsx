@@ -12,7 +12,7 @@ type HolidaysListProps = {
 const HolidaysList = ({ holidaysPromise }: HolidaysListProps) => {
   const holidays = use(holidaysPromise);
   return (
-    <ul className="mx-auto">
+    <ul className="mx-auto text-slate-700">
       {holidays?.map(({ name, startDate, id }) => {
         const enLocalizedName =
           name.find(({ language }) => language === "EN") ?? name[0];
@@ -26,14 +26,14 @@ const HolidaysList = ({ holidaysPromise }: HolidaysListProps) => {
 };
 
 type FallbackProps = {
-  error: Error;
+  error: unknown;
 };
 
 export const Fallback = ({ error }: FallbackProps) => {
   return (
     <div role="alert">
       <p>Something went wrong:</p>
-      <pre style={{ color: "red" }}>{error.message}</pre>
+      <pre style={{ color: "red" }}>{error instanceof Error ? error.message : String(error)}</pre>
     </div>
   );
 };
@@ -59,6 +59,7 @@ const CountrySelector = ({
 
   return (
     <select
+      className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-xs p-2 text-slate-900"
       defaultValue={initialCountryIsoCode}
       onChange={(event) => {
         onCountrySelect?.(event.target.value);
@@ -114,7 +115,7 @@ const HolidaysApp = () => {
   }, [holidaysApi, countryIsoCode]);
 
   return (
-    <section className="flex flex-col gap-4 min-h-64">
+    <section className="bg-white/20 backdrop-blur-sm border border-white/20 rounded-lg p-4 flex flex-col gap-4 min-h-64">
       <Countries
         initialCountryIsoCode={countryIsoCode}
         onCountrySelect={setCountryIsoCode}

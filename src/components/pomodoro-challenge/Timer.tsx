@@ -39,25 +39,20 @@ export const Timer = ({
     const timeInterval = 1000;
     const intervalId = setInterval(() => {
       setTime((state) => {
-        return new Date(state.getTime() - timeInterval);
+        const newTime = new Date(state.getTime() - timeInterval);
+        if (newTime.getTime() <= 0) {
+          setIsRunning(false);
+          onComplete?.();
+          return new Date(minutesToMilliseconds(duration));
+        }
+        return newTime;
       });
     }, timeInterval);
 
     return () => {
       clearInterval(intervalId);
     };
-  }, [isRunning]);
-
-  useEffect(() => {
-    if (!isRunning) {
-      return;
-    }
-    if (time.getTime() <= 0) {
-      setIsRunning(false);
-      setTime(new Date(minutesToMilliseconds(duration)));
-      onComplete?.();
-    }
-  }, [duration, time, onComplete, isRunning]);
+  }, [isRunning, duration, onComplete]);
 
   const startTimer = () => {
     setIsRunning(true);
@@ -76,8 +71,8 @@ export const Timer = ({
     setTime(new Date(minutesToMilliseconds(duration)));
   };
   return (
-    <div className="border-white border-solid border max-w-md flex-1 flex flex-col items-center p-4 gap-y-2 rounded-sm">
-      <h2>{formatTime(time)}</h2>
+    <div className="bg-white/20 backdrop-blur-sm border border-white/20 rounded-lg max-w-md flex-1 flex flex-col items-center p-4 gap-y-2">
+      <h2 className="text-slate-900">{formatTime(time)}</h2>
 
       <div className="flex gap-x-2">
         {isRunning && (

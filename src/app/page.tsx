@@ -10,18 +10,18 @@ export default async function Home() {
   });
 
   return (
-    <section>
-      <h1 className="text-lg font-bold">Recent posts:</h1>
+    <section className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-6 shadow-lg">
+      <h1 className="text-lg font-bold text-slate-900">Recent posts:</h1>
       <ul className="flex flex-col gap-y-2 mt-3">
         {postsByLastModified.map((post) => {
           return (
             <Link
               href={post.path}
-              className="bg-white h-full text-black p-4 rounded-sm"
+              className="bg-white/30 backdrop-blur-sm h-full text-slate-900 p-4 rounded-xs border border-white/20 hover:bg-white/40 transition-colors"
               key={post.path}
             >
-              <p>{post.title}</p>
-              <p>{`Last modified at ${post.modifiedAt.toDateString()}`}</p>
+              <p className="font-medium">{post.title}</p>
+              <p className="text-slate-600 text-sm">{`Last modified at ${post.modifiedAt.toDateString()}`}</p>
             </Link>
           );
         })}

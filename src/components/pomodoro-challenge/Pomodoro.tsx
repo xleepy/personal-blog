@@ -50,8 +50,8 @@ const Pomodoro = () => {
   };
 
   return (
-    <div className="flex flex-col items-center gap-y-2 p-3">
-      <h1>{`Session ${
+    <div className="bg-white/20 backdrop-blur-sm border border-white/20 rounded-lg flex flex-col items-center gap-y-2 p-4">
+      <h1 className="text-slate-900">{`Session ${
         currentSessionIdx + 1
       } of ${MAX_SESSIONS} (${label})`}</h1>
       <Timer
