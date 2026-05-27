@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import matter from "gray-matter";
+import { execSync } from "child_process";
 
 export type Post = {
   title: string;
@@ -9,6 +10,17 @@ export type Post = {
   modifiedAt: Date;
 };
 
+function getGitDate(args: string, filePath: string): Date | null {
+  try {
+    const result = execSync(`git log ${args} -- "${filePath}"`, {
+      encoding: "utf8",
+    }).trim();
+    return result ? new Date(result) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getBlogPostList(): Promise<Post[]> {
   const fileNames = await readDirectory("src/markdown/posts");
 
@@ -16,9 +28,13 @@ export async function getBlogPostList(): Promise<Post[]> {
 
   for (const fileName of fileNames) {
     const metadata = await getPostMetadata(fileName);
-    const stats = await readFileMetadata(`src/markdown/posts/${fileName}`);
-    const createdAt = new Date(stats.birthtime);
-    const modifiedAt = new Date(stats.mtime);
+    const relativePath = `src/markdown/posts/${fileName}`;
+    const stats = await readFileMetadata(relativePath);
+    const createdAt =
+      getGitDate("--follow --diff-filter=A --format=%aI", relativePath) ??
+      new Date(stats.birthtime);
+    const modifiedAt =
+      getGitDate("-1 --format=%aI", relativePath) ?? new Date(stats.mtime);
 
     blogPosts.push({
       title: metadata.title,
