@@ -72,7 +72,7 @@ export const Timer = ({
   };
   return (
     <div className="bg-white/20 backdrop-blur-sm border border-white/20 rounded-lg max-w-md flex-1 flex flex-col items-center p-4 gap-y-2">
-      <h2 className="text-slate-900">{formatTime(time)}</h2>
+      <h2 className="text-[var(--text-primary)]">{formatTime(time)}</h2>
 
       <div className="flex gap-x-2">
         {isRunning && (

@@ -13,13 +13,21 @@ export type WeatherVisuals = {
   ambientIntensity: number;
   speedMultiplier: number;
   rainIntensity: number;
+  precipitation: 'none' | 'rain' | 'snow';
   cloudCount: number;
+  fogNear: number;
+  fogFar: number;
+  skyMute: number;
+  sunVisibility: number;
 };
 
 export type TimeOfDay = 'night' | 'sunrise' | 'morning' | 'midday' | 'afternoon' | 'sunset' | 'dusk';
 
 export type TimeVisuals = {
   skyColor: string;
+  zenithColor: string;
+  horizonColor: string;
+  sunGlowColor: string;
   sunPosition: [number, number, number];
   ambientIntensity: number;
   cloudTint: string;

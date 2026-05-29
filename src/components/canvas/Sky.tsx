@@ -1,24 +1,27 @@
-import { Cloud, Clouds, Sky as SkyImpl } from '@react-three/drei';
+import { Cloud, Clouds } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useRef, useState } from 'react';
 import { Group, MeshLambertMaterial, Object3DEventMap } from 'three';
-import { blendColor, getTimeOfDay } from './utils';
-import { TIME_VISUALS } from './constants';
-import type { CloudConfig, WeatherVisuals } from './types';
+import { blendColor } from './utils';
+import { SkyDome } from './SkyDome';
+import type { CloudConfig, TimeVisuals, WeatherVisuals } from './types';
 
-export function Sky({ windSpeed, visuals }: { windSpeed?: number; visuals: WeatherVisuals }) {
+export function Sky({
+  windSpeed,
+  visuals,
+  timeVisuals,
+}: {
+  windSpeed?: number;
+  visuals: WeatherVisuals;
+  timeVisuals: TimeVisuals;
+}) {
   const cloudRefs = useRef<(Group<Object3DEventMap> | null)[]>([]);
 
   const windFactor = windSpeed ? Math.max(0.5, windSpeed / 20) : 1;
-  const { period } = getTimeOfDay();
-  const timeVisuals = TIME_VISUALS[period];
 
-  const blendedCloudColor = blendColor(timeVisuals.cloudTint, visuals.cloudColor, 0.5);
-  const blendedSunPosition: [number, number, number] = [
-    timeVisuals.sunPosition[0],
-    timeVisuals.sunPosition[1],
-    timeVisuals.sunPosition[2],
-  ];
+  const precipitationWeight = visuals.precipitation === 'none' ? 0 : 0.22;
+  const cloudWeatherWeight = Math.min(0.9, 0.35 + visuals.skyMute * 0.45 + visuals.rainIntensity * 0.08 + precipitationWeight);
+  const blendedCloudColor = blendColor(timeVisuals.cloudTint, visuals.cloudColor, cloudWeatherWeight);
 
   const [cloudConfigs] = useState<CloudConfig[]>(() =>
     Array.from({ length: 16 }, () => ({
@@ -49,11 +52,7 @@ export function Sky({ windSpeed, visuals }: { windSpeed?: number; visuals: Weath
 
   return (
     <>
-      <SkyImpl
-        sunPosition={blendedSunPosition}
-        turbidity={visuals.turbidity}
-        rayleigh={visuals.rayleigh}
-      />
+      <SkyDome timeVisuals={timeVisuals} visuals={visuals} />
       <group>
         <Clouds material={MeshLambertMaterial} limit={400}>
           {cloudConfigs.slice(0, visuals.cloudCount).map((config, i) => (

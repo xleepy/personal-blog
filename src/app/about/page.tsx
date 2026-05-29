@@ -14,12 +14,12 @@ export default function Page() {
         <Image src={avatar} alt="Avatar" className="rounded-lg" />
       </div>
       <div className="flex-1 px-3 flex flex-col gap-2">
-        <h1 className="text-2xl font-bold text-slate-900">About me</h1>
-        <p className="text-slate-700">Frontend dev</p>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">About me</h1>
+        <p className="text-[var(--text-secondary)]">Frontend dev</p>
         <ul>
           <li>
             <Link
-              className="flex gap-x-2 text-slate-700 hover:text-slate-900 transition-colors"
+              className="flex gap-x-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               target="_blank"
               href={"https://github.com/xleepy"}
             >

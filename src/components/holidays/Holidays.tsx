@@ -12,7 +12,7 @@ type HolidaysListProps = {
 const HolidaysList = ({ holidaysPromise }: HolidaysListProps) => {
   const holidays = use(holidaysPromise);
   return (
-    <ul className="mx-auto text-slate-700">
+    <ul className="mx-auto text-[var(--text-secondary)]">
       {holidays?.map(({ name, startDate, id }) => {
         const enLocalizedName =
           name.find(({ language }) => language === "EN") ?? name[0];
@@ -59,7 +59,7 @@ const CountrySelector = ({
 
   return (
     <select
-      className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-xs p-2 text-slate-900"
+      className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-xs p-2 text-[var(--text-primary)]"
       defaultValue={initialCountryIsoCode}
       onChange={(event) => {
         onCountrySelect?.(event.target.value);

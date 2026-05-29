@@ -1,7 +1,23 @@
 @import "tailwindcss";
 
+:root {
+  --text-primary: #f1f5f9;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+}
+
+[data-time="morning"],
+[data-time="midday"],
+[data-time="afternoon"],
+[data-time="sunrise"],
+[data-time="sunset"] {
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #475569;
+}
+
 body {
-  color: black;
+  color: var(--text-primary);
   font-family: var(--font-family, sans-serif);
 }
 
