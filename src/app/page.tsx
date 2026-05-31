@@ -1,4 +1,5 @@
 import { getBlogPostList } from "@/utilts/fileUtils";
+import GlassContainer from "@/components/GlassContainer";
 import Link from "next/link";
 
 export default async function Home() {
@@ -9,7 +10,7 @@ export default async function Home() {
   });
 
   return (
-    <section className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-6 shadow-lg">
+    <GlassContainer as="section" className="p-6">
       <h1 className="text-lg font-bold text-[var(--text-primary)]">Recent posts:</h1>
       <ul className="flex flex-col gap-y-2 mt-3">
         {postsByLastModified.map((post) => {
@@ -25,6 +26,6 @@ export default async function Home() {
           );
         })}
       </ul>
-    </section>
+    </GlassContainer>
   );
 }

@@ -1,3 +1,4 @@
+import GlassContainer from "@/components/GlassContainer";
 import { getBlogPostList, getPostMetadata } from "@/utilts/fileUtils";
 import { lazy, Suspense } from "react";
 
@@ -24,11 +25,11 @@ export default async function Page({ params }: Props) {
   const ComponentsMap = await getComponentsMap();
   const Component = ComponentsMap[postSlug];
   return (
-    <section className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-6 shadow-lg">
+    <GlassContainer as="section" className="p-6">
       <Suspense fallback={"Loading..."}>
         <Component />
       </Suspense>
-    </section>
+    </GlassContainer>
   );
 }
 

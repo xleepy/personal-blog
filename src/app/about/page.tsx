@@ -1,3 +1,4 @@
+import GlassContainer from "@/components/GlassContainer";
 import Link from "next/link";
 import Image from "next/image";
 import { GitHub } from "react-feather";
@@ -9,7 +10,7 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-6 shadow-lg flex gap-4">
+    <GlassContainer className="p-6 flex gap-4">
       <div className="flex-none">
         <Image src={avatar} alt="Avatar" className="rounded-lg" />
       </div>
@@ -28,6 +29,6 @@ export default function Page() {
           </li>
         </ul>
       </div>
-    </div>
+    </GlassContainer>
   );
 }

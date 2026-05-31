@@ -25,10 +25,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full w-full">
       <body
-        className={`${roboto.variable} antialiased mx-auto w-full h-full max-w-5xl flex flex-col p-4`}
+        className={`${roboto.variable} antialiased mx-auto w-full h-full flex flex-col p-4`}
       >
         <Header />
-        <main className="h-full w-full pt-8">{children}</main>
+        <main className="h-full w-full pt-8 max-w-5xl mx-auto">{children}</main>
         <AppCanvas />
       </body>
     </html>
