@@ -1,7 +1,7 @@
 import { ComponentPropsWithoutRef, ElementType, createElement } from "react";
 
 const glassContainerClassName =
-  "bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-lg";
+  "glass-container rounded-lg";
 
 type GlassContainerOwnProps<TElement extends ElementType> = {
   as?: TElement;

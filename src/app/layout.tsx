@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import { Roboto } from "next/font/google";
 import { AppCanvas } from "@/components/AppCanvas";
+import WeatherWidget from "@/components/WeatherWidget";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -30,6 +31,7 @@ export default function RootLayout({
         <Header />
         <main className="h-full w-full pt-8 max-w-5xl mx-auto">{children}</main>
         <AppCanvas />
+        <WeatherWidget />
       </body>
     </html>
   );
