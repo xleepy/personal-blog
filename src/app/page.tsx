@@ -10,19 +10,21 @@ export default async function Home() {
   });
 
   return (
-    <GlassContainer as="section" className="p-6">
+    <GlassContainer as="section" className="glass-panel p-6">
       <h1 className="text-lg font-bold text-[var(--text-primary)]">Recent posts:</h1>
-      <ul className="flex flex-col gap-y-2 mt-3">
+      <ul className="mt-3 flex flex-col gap-y-2">
         {postsByLastModified.map((post) => {
           return (
-            <Link
-              href={post.path}
-              className="bg-white/30 backdrop-blur-sm h-full text-[var(--text-primary)] p-4 rounded-xs border border-white/20 hover:bg-white/40 transition-colors"
-              key={post.path}
-            >
-              <p className="font-medium">{post.title}</p>
-              <p className="text-[var(--text-muted)] text-sm">{`Last modified at ${post.modifiedAt.toDateString()}`}</p>
-            </Link>
+            <li key={post.path}>
+              <GlassContainer
+                as={Link}
+                href={post.path}
+                className="glass-panel glass-interactive block h-full p-4 text-[var(--text-primary)]"
+              >
+                <p className="font-medium">{post.title}</p>
+                <p className="text-sm text-[var(--text-muted)]">{`Last modified at ${post.modifiedAt.toDateString()}`}</p>
+              </GlassContainer>
+            </li>
           );
         })}
       </ul>

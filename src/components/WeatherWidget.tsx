@@ -52,13 +52,13 @@ export default function WeatherWidget() {
         onClick={() => setExpanded((prev) => !prev)}
         aria-label={expanded ? 'Hide weather' : 'Show weather'}
         aria-expanded={expanded}
-        className="grid size-11 place-items-center p-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 md:hidden"
+        className="glass-control glass-interactive grid size-11 place-items-center p-0 transition-colors focus:outline-none md:hidden"
       >
         <Icon aria-hidden="true" className="size-5" />
       </GlassContainer>
       <GlassContainer
         role="status"
-        className={`w-max max-w-full p-3 ${expanded ? 'block' : 'hidden'} md:block`}
+        className={`glass-panel w-max max-w-full p-3 ${expanded ? 'block' : 'hidden'} md:block`}
       >
         <div className="flex items-center gap-3 text-[var(--text-primary)]">
           <Icon aria-hidden="true" className="size-8 shrink-0" />

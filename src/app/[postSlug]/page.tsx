@@ -25,7 +25,7 @@ export default async function Page({ params }: Props) {
   const ComponentsMap = await getComponentsMap();
   const Component = ComponentsMap[postSlug];
   return (
-    <GlassContainer as="section" className="p-6">
+    <GlassContainer as="section" className="glass-panel p-6">
       <Suspense fallback={"Loading..."}>
         <Component />
       </Suspense>

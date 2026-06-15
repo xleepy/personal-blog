@@ -10,7 +10,7 @@ export default function Header() {
     <header className="relative z-30 my-4 flex w-full flex-col gap-2 xl:block">
       <GlassContainer
         as="nav"
-        className="mx-auto flex w-full max-w-5xl justify-between gap-x-4 p-4"
+        className="glass-panel mx-auto flex w-full max-w-5xl justify-between gap-x-4 p-4"
       >
         <Link
           href={"/"}
@@ -31,7 +31,7 @@ export default function Header() {
           type="button"
           aria-label="Location usage disclaimer"
           aria-description={locationDisclaimer}
-          className="grid size-11 place-items-center p-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/70 lg:size-12"
+          className="glass-control glass-interactive grid size-11 place-items-center p-0 transition-colors focus:outline-none lg:size-12"
         >
           <AlertTriangle
             aria-hidden="true"
@@ -40,7 +40,7 @@ export default function Header() {
         </GlassContainer>
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute right-0 top-full z-20 mt-2 w-[min(calc(100vw-2rem),20rem)] rounded-lg border border-white/20 bg-slate-950/85 p-3 text-sm leading-relaxed text-white opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+          className="glass-tooltip pointer-events-none absolute right-0 top-full z-20 mt-2 w-[min(calc(100vw-2rem),20rem)] rounded-lg p-3 text-sm leading-relaxed opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
         >
           {locationDisclaimer}
         </div>

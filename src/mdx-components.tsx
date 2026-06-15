@@ -7,7 +7,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     h2: (props) => <h2 className="text-xl font-bold text-[var(--text-primary)]" {...props} />,
     h3: (props) => <h3 className="text-lg font-bold text-[var(--text-primary)]" {...props} />,
     p: (props) => <p className="text-[var(--text-secondary)]" {...props} />,
-    a: (props) => <a className="text-blue-700 hover:text-blue-900 underline transition-colors" {...props} />,
+    a: (props) => <a className="text-[var(--weather-accent)] underline decoration-[var(--weather-accent)] underline-offset-2 transition-opacity hover:opacity-80" {...props} />,
     li: (props) => <li className="text-[var(--text-secondary)]" {...props} />,
   };
 }

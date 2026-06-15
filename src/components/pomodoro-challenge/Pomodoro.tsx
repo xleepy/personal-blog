@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Timer } from "./Timer";
 import { Button } from "./Button";
 import { SkipForward } from "react-feather";
+import GlassContainer from "../GlassContainer";
 // https://reactpractice.dev/exercise/build-a-pomodoro-app
 
 type Session = {
@@ -50,7 +51,7 @@ const Pomodoro = () => {
   };
 
   return (
-    <div className="bg-white/20 backdrop-blur-sm border border-white/20 rounded-lg flex flex-col items-center gap-y-2 p-4">
+    <GlassContainer className="glass-panel flex flex-col items-center gap-y-2 p-4">
       <h1 className="text-[var(--text-primary)]">{`Session ${
         currentSessionIdx + 1
       } of ${MAX_SESSIONS} (${label})`}</h1>
@@ -65,7 +66,7 @@ const Pomodoro = () => {
           </Button>
         }
       />
-    </div>
+    </GlassContainer>
   );
 };
 

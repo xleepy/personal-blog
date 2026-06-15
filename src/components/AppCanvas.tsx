@@ -24,6 +24,10 @@ export const AppCanvas = () => {
     document.documentElement.setAttribute('data-time', period);
   }, [period]);
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-weather', weather?.condition ?? 'clear');
+  }, [weather?.condition]);
+
   const currentPeriodVisuals = TIME_VISUALS[period];
   const nextPeriodVisuals = TIME_VISUALS[nextPeriod];
 

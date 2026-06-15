@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <GlassContainer className="p-6 flex gap-4">
+    <GlassContainer className="glass-panel flex gap-4 p-6">
       <div className="flex-none">
         <Image src={avatar} alt="Avatar" className="rounded-lg" />
       </div>

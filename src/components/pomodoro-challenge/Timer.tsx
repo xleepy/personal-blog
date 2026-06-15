@@ -2,6 +2,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { Button } from "./Button";
 import { RefreshCw } from "react-feather";
+import GlassContainer from "../GlassContainer";
 
 export type TimerProps = {
   duration: number;
@@ -71,7 +72,7 @@ export const Timer = ({
     setTime(new Date(minutesToMilliseconds(duration)));
   };
   return (
-    <div className="bg-white/20 backdrop-blur-sm border border-white/20 rounded-lg max-w-md flex-1 flex flex-col items-center p-4 gap-y-2">
+    <GlassContainer className="glass-panel flex max-w-md flex-1 flex-col items-center gap-y-2 p-4">
       <h2 className="text-[var(--text-primary)]">{formatTime(time)}</h2>
 
       <div className="flex gap-x-2">
@@ -87,6 +88,6 @@ export const Timer = ({
         )}
         {!isRunning && <Button onClick={startTimer}>{`Start ${label}`}</Button>}
       </div>
-    </div>
+    </GlassContainer>
   );
 };
