@@ -2,7 +2,6 @@
 import { CountryResponse, HolidayResponse } from "@/api/holidays";
 import { Suspense, use, useMemo, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import GlassContainer from "../GlassContainer";
 import { HolidaysApiProvider, useHolidaysApi } from "./HolidaysApiProvider";
 
 // https://reactpractice.dev/exercise/build-a-public-holidays-app/
@@ -60,7 +59,7 @@ const CountrySelector = ({
 
   return (
     <select
-      className="glass-select p-2 text-[var(--text-primary)]"
+      className="win98-select p-2 text-[var(--text-primary)]"
       defaultValue={initialCountryIsoCode}
       onChange={(event) => {
         onCountrySelect?.(event.target.value);
@@ -116,7 +115,7 @@ const HolidaysApp = () => {
   }, [holidaysApi, countryIsoCode]);
 
   return (
-    <GlassContainer as="section" className="glass-panel flex min-h-64 flex-col gap-4 p-4">
+    <section className="win98-panel flex min-h-64 flex-col gap-4 p-4">
       <Countries
         initialCountryIsoCode={countryIsoCode}
         onCountrySelect={setCountryIsoCode}
@@ -126,7 +125,7 @@ const HolidaysApp = () => {
           <HolidaysList holidaysPromise={holidaysPromise} />
         </Suspense>
       </ErrorBoundary>
-    </GlassContainer>
+    </section>
   );
 };
 
