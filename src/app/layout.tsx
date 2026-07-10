@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
-import { Roboto } from "next/font/google";
 import { AppCanvas } from "@/components/AppCanvas";
 import WeatherWidget from "@/components/WeatherWidget";
 
-const roboto = Roboto({
-  subsets: ["latin"],
-  display: "fallback",
-  style: "normal",
-  weight: ["100", "300", "400", "500", "700", "900"],
-  variable: "--font-family",
-});
-
 export const metadata: Metadata = {
-  title: "Welcome to blog",
-  description: "Welcome to my blog generated with Next",
+  title: "My Blog 98",
+  description: "A personal blog inspired by the Windows 98 desktop",
 };
 
 export default function RootLayout({
@@ -25,11 +16,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full w-full">
-      <body
-        className={`${roboto.variable} antialiased mx-auto w-full h-full flex flex-col p-4`}
-      >
+      <body className="win98-page min-h-full w-full">
         <Header />
-        <main className="h-full w-full pt-8 max-w-5xl mx-auto">{children}</main>
+        <main className="relative z-10 min-h-dvh w-full pb-12">{children}</main>
         <AppCanvas />
         <WeatherWidget />
       </body>

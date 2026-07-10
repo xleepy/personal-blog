@@ -4,6 +4,9 @@ import createMDX from "@next/mdx";
 const nextConfig = {
   output: "export",
   turbopack: true,
+  devIndicators: {
+    position: "top-right",
+  },
   basePath: process.env.BASE_PATH,
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   images: {

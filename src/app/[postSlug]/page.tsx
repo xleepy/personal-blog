@@ -1,4 +1,4 @@
-import GlassContainer from "@/components/GlassContainer";
+import Win98Window from "@/components/Win98Window";
 import { getBlogPostList, getPostMetadata } from "@/utilts/fileUtils";
 import { lazy, Suspense } from "react";
 
@@ -24,12 +24,20 @@ export default async function Page({ params }: Props) {
   const { postSlug } = await params;
   const ComponentsMap = await getComponentsMap();
   const Component = ComponentsMap[postSlug];
+  const metadata = await getPostMetadata(`${postSlug}.mdx`);
   return (
-    <GlassContainer as="section" className="glass-panel p-6">
-      <Suspense fallback={"Loading..."}>
-        <Component />
-      </Suspense>
-    </GlassContainer>
+    <div className="win98-page-window-wrap">
+      <Win98Window
+        title={`${metadata.title} - WordPad`}
+        className="w-full max-w-5xl"
+        contentClassName="win98-document"
+        initialHeight="min(70dvh, 720px)"
+      >
+        <Suspense fallback={"Loading..."}>
+          <Component />
+        </Suspense>
+      </Win98Window>
+    </div>
   );
 }
 
