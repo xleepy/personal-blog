@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useDraggableWindow } from "@/hooks/useDraggableWindow";
+import Win98WindowShell from "@/components/Win98WindowShell";
 
 export type RecentPost = {
   title: string;
@@ -25,8 +25,6 @@ const formatDate = (date: string) =>
 
 export default function RecentPostsDesktop({ posts }: RecentPostsDesktopProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { windowRef, windowStyle, titlebarProps, resizeHandleProps } =
-    useDraggableWindow({ minWidth: 420, minHeight: 300 });
 
   return (
     <section className="win98-desktop-area" aria-label="Blog desktop">
@@ -59,19 +57,15 @@ export default function RecentPostsDesktop({ posts }: RecentPostsDesktopProps) {
       )}
 
       {isOpen && (
-        <section
-          ref={windowRef}
-          style={windowStyle}
+        <Win98WindowShell
+          title="Recent Posts - Exploring"
           id="recent-posts-window"
-          className="win98-window win98-explorer-window"
+          className="win98-explorer-window"
           aria-label="Recent Posts Explorer"
-        >
-          <div {...titlebarProps}>
-            <div className="win98-titlebar-label">
-              <span aria-hidden="true" className="win98-titlebar-icon" />
-              <span className="truncate">Recent Posts - Exploring</span>
-            </div>
-            <div className="win98-titlebar-actions">
+          minWidth={420}
+          minHeight={300}
+          captionActions={
+            <>
               <button
                 type="button"
                 className="win98-caption-button"
@@ -96,9 +90,9 @@ export default function RecentPostsDesktop({ posts }: RecentPostsDesktopProps) {
               >
                 ×
               </button>
-            </div>
-          </div>
-
+            </>
+          }
+        >
           <div className="win98-menu-bar" aria-label="Explorer menu">
             <span><u>F</u>ile</span>
             <span><u>E</u>dit</span>
@@ -161,8 +155,7 @@ export default function RecentPostsDesktop({ posts }: RecentPostsDesktopProps) {
             <span>{posts.length} object{posts.length === 1 ? "" : "s"}</span>
             <span>My Computer</span>
           </div>
-          <div {...resizeHandleProps} />
-        </section>
+        </Win98WindowShell>
       )}
     </section>
   );
