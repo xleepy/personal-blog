@@ -18,7 +18,7 @@ export default function RootLayout({
     <html lang="en" className="h-full w-full">
       <body className="win98-page min-h-full w-full">
         <Header />
-        <main className="relative z-10 min-h-dvh w-full pb-12">{children}</main>
+        <main className="relative z-10 min-h-dvh w-full pb-11">{children}</main>
         <AppCanvas />
         <WeatherWidget />
       </body>
