@@ -1,0 +1,6 @@
+1:"$Sreact.fragment"
+2:I[14208,["/personal-blog/_next/static/chunks/0z3~_0q-9gu4h.js","/personal-blog/_next/static/chunks/16a~30s8hjxcf.js","/personal-blog/_next/static/chunks/0oce0ofw2_3kv.js","/personal-blog/_next/static/chunks/185l-69fk_w7k.js"],"default"]
+3:I[97367,["/personal-blog/_next/static/chunks/0z3~_0q-9gu4h.js","/personal-blog/_next/static/chunks/16a~30s8hjxcf.js","/personal-blog/_next/static/chunks/0oce0ofw2_3kv.js"],"OutletBoundary"]
+4:"$Sreact.suspense"
+0:{"rsc":["$","$1","c",{"children":[["$","$L2",null,{"posts":[{"title":"Holidays app challenge","path":"holidays","modifiedAt":"2024-11-27T20:00:47.000Z"},{"title":"Pomodoro challenge","path":"pomodoro","modifiedAt":"2024-11-23T19:52:56.000Z"}]}],[["$","script","script-0",{"src":"/personal-blog/_next/static/chunks/185l-69fk_w7k.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"UPs_9VEo2HriNPl7IzptI"}
+5:null
