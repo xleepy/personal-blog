@@ -27,14 +27,15 @@ export function Rain({
     }
   }, [count, isSnow]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     if (!meshRef.current || !positions.current || !velocities.current) return;
     const pos = positions.current;
     const vel = velocities.current;
+    const step = Math.min(delta, 0.1) * 60;
     for (let i = 0; i < count; i++) {
-      pos[i * 3 + 1] -= vel[i] * intensity * (isSnow ? 1.3 : 4);
+      pos[i * 3 + 1] -= vel[i] * intensity * (isSnow ? 1.3 : 4) * step;
       if (isSnow) {
-        pos[i * 3] += Math.sin(state.clock.elapsedTime * 0.8 + i) * 0.006;
+        pos[i * 3] += Math.sin(state.clock.elapsedTime * 0.8 + i) * 0.006 * step;
       }
       if (pos[i * 3 + 1] < -10) {
         pos[i * 3 + 1] = 25;

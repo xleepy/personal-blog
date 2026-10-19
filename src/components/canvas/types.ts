@@ -1,9 +1,3 @@
-export type CloudConfig = {
-  position: [number, number, number];
-  seed: number;
-  speed: number;
-};
-
 export type WeatherVisuals = {
   cloudColor: string;
   cloudOpacity: number;

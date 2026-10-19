@@ -1,23 +1,42 @@
+import type { WeatherData } from '@/hooks/useWeather';
 import type { TimeOfDay, TimeVisuals } from './types';
 
-export function getTimeOfDay(): { period: TimeOfDay; nextPeriod: TimeOfDay; blend: number } {
-  const now = new Date();
-  const hour = now.getHours() + now.getMinutes() / 60;
-  const month = now.getMonth();
+// Blends around the weather location's solar times. Uses local 06:00/18:00 only
+// before weather arrives. Polar days and nights use the API daylight flag.
+export function getTimeOfDay(
+  now: number,
+  solar?: Pick<WeatherData, 'sunrise' | 'sunset' | 'isDay'> | null,
+): { period: TimeOfDay; nextPeriod: TimeOfDay; blend: number } {
+  const localDay = new Date(now);
+  const sunrise = solar ? solar.sunrise : new Date(localDay).setHours(6, 0, 0, 0);
+  const sunset = solar ? solar.sunset : new Date(localDay).setHours(18, 0, 0, 0);
+  if (sunrise == null || sunset == null || sunset <= sunrise) {
+    const period = solar?.isDay ? 'midday' : 'night';
+    return { period, nextPeriod: period, blend: 0 };
+  }
 
-  const sunriseStart = 5 + (month >= 5 && month <= 7 ? -1 : month >= 11 || month <= 1 ? 2 : 0.5);
-  const sunriseEnd = sunriseStart + 2;
-  const sunsetStart = 18 + (month >= 5 && month <= 7 ? 2 : month >= 11 || month <= 1 ? -2 : 0);
-  const sunsetEnd = sunsetStart + 2;
+  const daylight = sunset - sunrise;
+  const twilight = Math.min(45 * 60_000, daylight * 0.1);
+  const stops: { at: number; period: TimeOfDay }[] = [
+    { at: sunrise - twilight, period: 'night' },
+    { at: sunrise, period: 'sunrise' },
+    { at: sunrise + daylight * 0.2, period: 'morning' },
+    { at: sunrise + daylight * 0.5, period: 'midday' },
+    { at: sunrise + daylight * 0.78, period: 'afternoon' },
+    { at: sunset, period: 'sunset' },
+    { at: sunset + twilight * 0.65, period: 'dusk' },
+    { at: sunset + twilight * 1.65, period: 'night' },
+  ];
 
-  if (hour < sunriseStart) return { period: 'night', nextPeriod: 'sunrise', blend: 0 };
-  if (hour < sunriseEnd) return { period: 'sunrise', nextPeriod: 'morning', blend: (hour - sunriseStart) / 2 };
-  if (hour < 10) return { period: 'morning', nextPeriod: 'midday', blend: (hour - sunriseEnd) / (10 - sunriseEnd) };
-  if (hour < 16) return { period: 'midday', nextPeriod: 'afternoon', blend: (hour - 10) / 6 };
-  if (hour < sunsetStart) return { period: 'afternoon', nextPeriod: 'sunset', blend: (hour - 16) / (sunsetStart - 16) };
-  if (hour < sunsetEnd) return { period: 'sunset', nextPeriod: 'dusk', blend: (hour - sunsetStart) / 2 };
-  if (hour < 22) return { period: 'dusk', nextPeriod: 'night', blend: (hour - sunsetEnd) / (22 - sunsetEnd) };
-  return { period: 'night', nextPeriod: 'sunrise', blend: 0 };
+  for (let index = 0; index < stops.length - 1; index++) {
+    const current = stops[index];
+    const next = stops[index + 1];
+    if (now >= current.at && now < next.at) {
+      const t = (now - current.at) / (next.at - current.at);
+      return { period: current.period, nextPeriod: next.period, blend: t * t * (3 - 2 * t) };
+    }
+  }
+  return { period: 'night', nextPeriod: 'night', blend: 0 };
 }
 
 export function blendColor(color1: string, color2: string, t: number): string {

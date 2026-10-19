@@ -5,6 +5,7 @@ import {
   CloudLightning,
   CloudRain,
   CloudSnow,
+  Moon,
   Sun,
   Wind,
   type Icon as FeatherIcon,
@@ -34,15 +35,21 @@ const LABEL_MAP: Record<WeatherCondition, string> = {
 };
 
 export default function WeatherWidget() {
-  const weather = useWeather();
+  const { weather, now, error } = useWeather();
 
   const condition: WeatherCondition = weather?.condition ?? 'clear';
-  const Icon = ICON_MAP[condition];
-  const label = weather ? LABEL_MAP[condition] : 'Loading…';
+  const isDay = weather?.sunrise != null && weather?.sunset != null && now !== null
+    ? now >= weather.sunrise && now < weather.sunset
+    : weather?.isDay ?? true;
+  const Icon = condition === 'clear' && !isDay ? Moon : ICON_MAP[condition];
+  const label = weather ? LABEL_MAP[condition] : error ? 'Weather unavailable' : 'Loading…';
   const temperature = weather ? Math.round(weather.temperature) : null;
+  const description = weather
+    ? `${weather.location === 'Prague' ? 'Prague' : 'Local weather'} · ${label} · ${weather.cloudCover}% cloud cover · Wind ${Math.round(weather.windSpeed)} km/h${error ? ' · Last available data' : ''}`
+    : label;
 
   return (
-    <div className="win98-weather-tray" role="status" title={label}>
+    <div className="win98-weather-tray" role="status" title={description}>
       <Icon aria-hidden="true" size={18} />
       <span className="font-bold">{temperature !== null ? `${temperature}°C` : '—°'}</span>
       <span className="hidden truncate sm:inline">{label}</span>
