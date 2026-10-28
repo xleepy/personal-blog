@@ -8,8 +8,7 @@ export function SceneBackground({
   timeVisuals: TimeVisuals;
   visuals: WeatherVisuals;
 }) {
-  const daylight = Math.min(1, timeVisuals.ambientIntensity / (Math.PI / 1.5));
-  const fogColor = blendColor(timeVisuals.horizonColor, visuals.cloudColor, visuals.skyMute * daylight * 0.45);
+  const fogColor = blendColor(timeVisuals.horizonColor, visuals.cloudColor, visuals.skyMute * 0.45);
 
   return (
     <>

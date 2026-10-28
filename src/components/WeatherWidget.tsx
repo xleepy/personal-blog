@@ -5,7 +5,6 @@ import {
   CloudLightning,
   CloudRain,
   CloudSnow,
-  Moon,
   Sun,
   Wind,
   type Icon as FeatherIcon,
@@ -35,23 +34,18 @@ const LABEL_MAP: Record<WeatherCondition, string> = {
 };
 
 export default function WeatherWidget() {
-  const { weather, now, error } = useWeather();
+  const { weather, status, source } = useWeather();
 
-  const condition: WeatherCondition = weather?.condition ?? 'clear';
-  const isDay = weather?.sunrise != null && weather?.sunset != null && now !== null
-    ? now >= weather.sunrise && now < weather.sunset
-    : weather?.isDay ?? true;
-  const Icon = condition === 'clear' && !isDay ? Moon : ICON_MAP[condition];
-  const label = weather ? LABEL_MAP[condition] : error ? 'Weather unavailable' : 'Loading…';
+  const Icon = weather ? ICON_MAP[weather.condition] : Cloud;
+  const label = weather
+    ? [LABEL_MAP[weather.condition], status === 'stale' ? 'Stale' : status === 'refreshing' ? 'Refreshing…' : null, source === 'prague' ? 'Prague fallback' : null].filter(Boolean).join(' · ')
+    : status === 'unavailable' ? 'Weather unavailable' : 'Loading weather…';
   const temperature = weather ? Math.round(weather.temperature) : null;
-  const description = weather
-    ? `${weather.location === 'Prague' ? 'Prague' : 'Local weather'} · ${label} · ${weather.cloudCover}% cloud cover · Wind ${Math.round(weather.windSpeed)} km/h${error ? ' · Last available data' : ''}`
-    : label;
 
   return (
-    <div className="win98-weather-tray" role="status" title={description}>
+    <div className="win98-weather-tray" role="status" title={label} aria-label={`${temperature !== null ? `${temperature}°C · ` : ''}${label}`}>
       <Icon aria-hidden="true" size={18} />
-      <span className="font-bold">{temperature !== null ? `${temperature}°C` : '—°'}</span>
+      <span className="font-bold">{temperature !== null ? `${temperature}°C${status === 'stale' ? '*' : ''}` : '—°'}</span>
       <span className="hidden truncate sm:inline">{label}</span>
     </div>
   );

@@ -1,42 +1,37 @@
-import type { WeatherData } from '@/hooks/useWeather';
 import type { TimeOfDay, TimeVisuals } from './types';
 
-// Blends around the weather location's solar times. Uses local 06:00/18:00 only
-// before weather arrives. Polar days and nights use the API daylight flag.
-export function getTimeOfDay(
-  now: number,
-  solar?: Pick<WeatherData, 'sunrise' | 'sunset' | 'isDay'> | null,
-): { period: TimeOfDay; nextPeriod: TimeOfDay; blend: number } {
-  const localDay = new Date(now);
-  const sunrise = solar ? solar.sunrise : new Date(localDay).setHours(6, 0, 0, 0);
-  const sunset = solar ? solar.sunset : new Date(localDay).setHours(18, 0, 0, 0);
-  if (sunrise == null || sunset == null || sunset <= sunrise) {
-    const period = solar?.isDay ? 'midday' : 'night';
-    return { period, nextPeriod: period, blend: 0 };
-  }
-
-  const daylight = sunset - sunrise;
-  const twilight = Math.min(45 * 60_000, daylight * 0.1);
-  const stops: { at: number; period: TimeOfDay }[] = [
-    { at: sunrise - twilight, period: 'night' },
-    { at: sunrise, period: 'sunrise' },
-    { at: sunrise + daylight * 0.2, period: 'morning' },
-    { at: sunrise + daylight * 0.5, period: 'midday' },
-    { at: sunrise + daylight * 0.78, period: 'afternoon' },
-    { at: sunset, period: 'sunset' },
-    { at: sunset + twilight * 0.65, period: 'dusk' },
-    { at: sunset + twilight * 1.65, period: 'night' },
+export function getTimeOfDay(now: Date = new Date()): { period: TimeOfDay; nextPeriod: TimeOfDay; blend: number } {
+  const hour = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3_600_000;
+  const yearStart = Date.UTC(now.getFullYear(), 0, 1);
+  const daysInYear = (Date.UTC(now.getFullYear() + 1, 0, 1) - yearStart) / 86_400_000;
+  // Use calendar days, rather than elapsed local timestamps, so DST cannot shift the season.
+  const calendarDay = (Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - yearStart) / 86_400_000 + hour / 24;
+  const summer = Math.cos(2 * Math.PI * (calendarDay / daysInYear - 171 / 365));
+  const sunrise = 5.5 - 1.5 * summer;
+  const sunset = 18 + 2 * summer;
+  const anchors: { hour: number; period: TimeOfDay }[] = [
+    { hour: sunrise - 1.5, period: 'night' },
+    { hour: sunrise, period: 'sunrise' },
+    { hour: sunrise + 2, period: 'morning' },
+    { hour: 10, period: 'midday' },
+    { hour: Math.min(16, sunset - 2), period: 'afternoon' },
+    { hour: sunset, period: 'sunset' },
+    { hour: sunset + 1, period: 'dusk' },
+    { hour: sunset + 2.5, period: 'night' },
   ];
 
-  for (let index = 0; index < stops.length - 1; index++) {
-    const current = stops[index];
-    const next = stops[index + 1];
-    if (now >= current.at && now < next.at) {
-      const t = (now - current.at) / (next.at - current.at);
-      return { period: current.period, nextPeriod: next.period, blend: t * t * (3 - 2 * t) };
+  for (let index = 0; index < anchors.length - 1; index++) {
+    const current = anchors[index];
+    const next = anchors[index + 1];
+    if (hour >= current.hour && hour < next.hour) {
+      return {
+        period: current.period,
+        nextPeriod: next.period,
+        blend: (hour - current.hour) / (next.hour - current.hour),
+      };
     }
   }
-  return { period: 'night', nextPeriod: 'night', blend: 0 };
+  return { period: 'night', nextPeriod: 'sunrise', blend: 0 };
 }
 
 export function blendColor(color1: string, color2: string, t: number): string {

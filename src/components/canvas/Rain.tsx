@@ -29,18 +29,27 @@ export function Rain({
 
   useFrame((state, delta) => {
     if (!meshRef.current || !positions.current || !velocities.current) return;
+    // Preserve the original 60 fps speed, and avoid a large jump after a paused tab.
+    const step = Math.min(Math.max(delta, 0), 0.05);
     const pos = positions.current;
     const vel = velocities.current;
-    const step = Math.min(delta, 0.1) * 60;
     for (let i = 0; i < count; i++) {
-      pos[i * 3 + 1] -= vel[i] * intensity * (isSnow ? 1.3 : 4) * step;
-      if (isSnow) {
-        pos[i * 3] += Math.sin(state.clock.elapsedTime * 0.8 + i) * 0.006 * step;
-      }
+      const fallSpeed = vel[i] * 60 * intensity * (isSnow ? 1.3 : 4);
+      pos[i * 3 + 1] -= fallSpeed * step;
+      let swayStart = state.clock.elapsedTime - step;
       if (pos[i * 3 + 1] < -10) {
-        pos[i * 3 + 1] = 25;
+        // Keep travel beyond the boundary, including any complete volume crossings.
+        const overshoot = (-10 - pos[i * 3 + 1]) % 35;
+        pos[i * 3 + 1] = 25 - overshoot;
         pos[i * 3] = (Math.random() - 0.5) * 50;
         pos[i * 3 + 2] = -(Math.random() * 20 + 2);
+        swayStart = state.clock.elapsedTime - overshoot / fallSpeed;
+      }
+      if (isSnow) {
+        // Integrate sway exactly, including only time since the last respawn.
+        pos[i * 3] += 0.36 / 0.8 * (
+          Math.cos(swayStart * 0.8 + i) - Math.cos(state.clock.elapsedTime * 0.8 + i)
+        );
       }
       dummy.current.position.set(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
       dummy.current.rotation.z = isSnow ? state.clock.elapsedTime * 0.2 + i : -0.15;

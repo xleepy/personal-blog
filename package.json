@@ -8,6 +8,7 @@
     "deploy": "cross-env BASE_PATH=/personal-blog npm run build",
     "start": "npx serve@latest out",
     "lint": "eslint .",
+    "test:weather": "node --test scripts/weather-*.test.cjs",
     "generate-holidays-api": "openapi-generator-cli generate -i https://openholidaysapi.org/swagger/v1/swagger.json -g typescript-fetch -o ./src/api/holidays"
   },
   "dependencies": {
