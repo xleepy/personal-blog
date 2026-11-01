@@ -9,6 +9,14 @@ export type WeatherData = {
   humidity: number;
   windSpeed: number;
   weatherCode: number;
+  cloudCover?: number;
+  cloudCoverLow?: number;
+  cloudCoverMid?: number;
+  cloudCoverHigh?: number;
+  precipitation?: number; // mm/hour equivalent
+  windDirection?: number;
+  latitude: number;
+  longitude: number;
 };
 
 export type WeatherState = {
@@ -51,7 +59,7 @@ async function fetchWeather(lat: number, lon: number, signal: AbortSignal): Prom
 
   try {
     const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m`,
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,cloud_cover,precipitation,wind_direction_10m,cloud_cover_low,cloud_cover_mid,cloud_cover_high`,
       { signal: request.signal },
     );
     if (!res.ok) throw new Error('Weather fetch failed');
@@ -66,6 +74,16 @@ async function fetchWeather(lat: number, lon: number, signal: AbortSignal): Prom
       humidity: c.relative_humidity_2m,
       windSpeed: c.wind_speed_10m,
       weatherCode: c.weather_code,
+      cloudCover: Number.isFinite(c.cloud_cover) ? Math.min(100, Math.max(0, c.cloud_cover)) : undefined,
+      cloudCoverLow: Number.isFinite(c.cloud_cover_low) ? Math.min(100, Math.max(0, c.cloud_cover_low)) : undefined,
+      cloudCoverMid: Number.isFinite(c.cloud_cover_mid) ? Math.min(100, Math.max(0, c.cloud_cover_mid)) : undefined,
+      cloudCoverHigh: Number.isFinite(c.cloud_cover_high) ? Math.min(100, Math.max(0, c.cloud_cover_high)) : undefined,
+      precipitation: Number.isFinite(c.precipitation)
+        ? Math.max(0, c.precipitation) * 3600 / (Number.isFinite(c.interval) && c.interval > 0 ? c.interval : 900)
+        : undefined,
+      windDirection: Number.isFinite(c.wind_direction_10m) ? ((c.wind_direction_10m % 360) + 360) % 360 : undefined,
+      latitude: lat,
+      longitude: lon,
     };
   } finally {
     window.clearTimeout(timeout);

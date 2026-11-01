@@ -59,8 +59,8 @@ a {
   inset: 0;
   z-index: -5;
   background:
-    linear-gradient(rgb(0 64 64 / 0.18), rgb(0 64 64 / 0.18)),
-    radial-gradient(circle at 50% 45%, transparent 0 42%, rgb(0 35 42 / 0.2) 100%);
+    linear-gradient(rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.04)),
+    radial-gradient(circle at 50% 45%, transparent 0 42%, rgb(0 8 20 / 0.12) 100%);
   content: "";
   pointer-events: none;
 }

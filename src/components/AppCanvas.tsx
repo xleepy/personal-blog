@@ -1,24 +1,36 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Canvas } from '@react-three/fiber';
 import { useWeather } from '@/hooks/useWeather';
 import { useTimeOfDay } from '@/hooks/useTimeOfDay';
 import {
-  DEFAULT_WEATHER_VISUALS,
-  blendColor,
-  blendTimeVisuals,
   Lightning,
   Rain,
   SceneBackground,
   Sky,
-  TIME_VISUALS,
-  WEATHER_VISUALS,
 } from './canvas';
+import { getAtmosphere } from './canvas/atmosphere';
+import { DEFAULT_DEBUG_SETTINGS, getDebugTime, getDebugWeather, isWeatherDebugActive } from './canvas/debug';
+
+const WeatherDebugPanel = process.env.NODE_ENV === 'development'
+  ? dynamic(() => import('./WeatherDebugPanel'), { ssr: false })
+  : null;
 
 export const AppCanvas = () => {
-  const { weather } = useWeather();
-  const visuals = weather ? WEATHER_VISUALS[weather.condition] : DEFAULT_WEATHER_VISUALS;
-  const { period, nextPeriod, blend } = useTimeOfDay();
+  const { weather: liveWeather } = useWeather();
+  const [debug, setDebug] = useState(DEFAULT_DEBUG_SETTINGS);
+  const weather = process.env.NODE_ENV === 'development' ? getDebugWeather(liveWeather, debug) : liveWeather;
+  const visuals = getAtmosphere(weather, process.env.NODE_ENV === 'development' ? debug.clouds : 'auto');
+  const liveTime = useTimeOfDay(liveWeather?.latitude, liveWeather?.longitude);
+  const { period, timeVisuals } = (process.env.NODE_ENV === 'development' ? getDebugTime(debug) : null) ?? liveTime;
+  const debugActive = process.env.NODE_ENV === 'development' && isWeatherDebugActive(debug);
+
+  useEffect(() => {
+    if (debugActive) document.documentElement.setAttribute('data-sky-debug', 'true');
+    else document.documentElement.removeAttribute('data-sky-debug');
+    return () => document.documentElement.removeAttribute('data-sky-debug');
+  }, [debugActive]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-time', period);
@@ -28,35 +40,19 @@ export const AppCanvas = () => {
     document.documentElement.setAttribute('data-weather', weather?.condition ?? 'unavailable');
   }, [weather?.condition]);
 
-  const currentPeriodVisuals = TIME_VISUALS[period];
-  const nextPeriodVisuals = TIME_VISUALS[nextPeriod];
-
-  const timeVisuals = blendTimeVisuals(currentPeriodVisuals, nextPeriodVisuals, blend);
-  const blendedAmbient = timeVisuals.ambientIntensity * (visuals.ambientIntensity / (Math.PI / 1.5));
-  const apparentSunPosition = timeVisuals.sunPosition.map(
-    (value, index) => value + (visuals.sunPosition[index] - value) * Math.min(0.4, visuals.turbidity / 40),
-  ) as [number, number, number];
-  const lightWeatherBlend = Math.min(0.85, visuals.skyMute + visuals.rainIntensity * 0.12);
-  const skyLightColor = blendColor(timeVisuals.zenithColor, visuals.cloudColor, lightWeatherBlend * 0.45);
-  const groundLightColor = blendColor(timeVisuals.horizonColor, visuals.cloudColor, lightWeatherBlend);
-  const sunColor = blendColor(timeVisuals.sunGlowColor, visuals.cloudColor, Math.min(0.75, lightWeatherBlend));
-  const sunIntensity = Math.max(0.08, 2.4 * visuals.sunVisibility);
-
   return (
-    <div className="fixed inset-0 -z-10">
-      <Canvas>
-        <SceneBackground timeVisuals={timeVisuals} visuals={visuals} />
-        <Sky windSpeed={weather?.windSpeed} visuals={visuals} timeVisuals={timeVisuals} />
-        <Rain intensity={visuals.rainIntensity} precipitation={visuals.precipitation} />
-        <Lightning active={weather?.condition === 'thunderstorm'} />
-        <ambientLight intensity={blendedAmbient} />
-        <hemisphereLight args={[skyLightColor, groundLightColor, blendedAmbient * 0.55]} />
-        <directionalLight
-          position={apparentSunPosition}
-          color={sunColor}
-          intensity={sunIntensity}
-        />
-      </Canvas>
-    </div>
+    <>
+      <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden="true">
+        <Canvas dpr={[1, 1.5]} camera={{ position: [0, 0, 5], fov: 60 }}
+          onCreated={({ camera }) => camera.lookAt(0, 5.2, -5)}>
+          <SceneBackground timeVisuals={timeVisuals} visuals={visuals} />
+          <Sky windSpeed={weather?.windSpeed} windDirection={weather?.windDirection} visuals={visuals} timeVisuals={timeVisuals} />
+          <Rain intensity={visuals.rainIntensity} precipitation={visuals.precipitation}
+            windSpeed={weather?.windSpeed} windDirection={weather?.windDirection} color={timeVisuals.cloudTint} />
+          <Lightning active={weather?.condition === 'thunderstorm'} />
+        </Canvas>
+      </div>
+      {WeatherDebugPanel && <WeatherDebugPanel settings={debug} onChange={setDebug} weather={weather} />}
+    </>
   );
 };

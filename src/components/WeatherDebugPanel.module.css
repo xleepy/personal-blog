@@ -1,0 +1,31 @@
+.panel.panel {
+  position: fixed;
+  z-index: 1000;
+  top: 60px;
+  right: 8px;
+  width: min(310px, calc(100vw - 16px));
+  max-height: calc(100dvh - 108px);
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.title {
+  padding: 4px 6px;
+  color: white;
+  background: linear-gradient(90deg, #000080, #1084d0);
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.title span { font-weight: normal; }
+.content { display: grid; gap: 8px; padding: 8px 5px 5px; }
+.selectField, .rangeField { display: grid; gap: 3px; }
+.selectField select { width: 100%; color: #000; background: #fff; border: 1px solid #808080; padding: 2px; }
+.rangeField input, .measurement > input { width: 100%; }
+.measurements { display: grid; gap: 6px; min-width: 0; margin: 0; padding: 5px; border: 1px solid #808080; }
+.measurements legend { padding: 0 3px; }
+.measurementHeader { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+.measurementHeader label:last-child { white-space: nowrap; }
+.measurementHeader input { vertical-align: middle; }
+.note { margin: 0; line-height: 1.25; }
+.reset { min-height: 28px; padding: 4px 8px; }

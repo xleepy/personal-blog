@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getTimeOfDay } from '@/components/canvas/utils';
+import { getSolarVisuals } from '@/components/canvas/solar';
 
-export function useTimeOfDay() {
+export function useTimeOfDay(latitude?: number, longitude?: number) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -21,5 +21,5 @@ export function useTimeOfDay() {
     };
   }, []);
 
-  return getTimeOfDay(now);
+  return getSolarVisuals(now, latitude, longitude);
 }

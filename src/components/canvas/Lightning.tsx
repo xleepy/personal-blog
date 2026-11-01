@@ -1,32 +1,88 @@
 import { useFrame } from '@react-three/fiber';
-import { useRef } from 'react';
-import { PointLight } from 'three';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AdditiveBlending, ShaderMaterial } from 'three';
+
+const nextInterval = () => 8 + Math.random() * 17;
 
 export function Lightning({ active }: { active: boolean }) {
-  const lightRef = useRef<PointLight>(null);
-  const nextFlash = useRef(1.5);
-  const flashTime = useRef(0);
+  // Start disabled until the browser preference is known.
+  const [reducedMotion, setReducedMotion] = useState(true);
+  const material = useRef<ShaderMaterial>(null);
+  const nextFlash = useRef(8);
+  const flashTime = useRef(-1);
+  const uniforms = useMemo(() => ({ pulse: { value: 0 } }), []);
 
-  useFrame((state, delta) => {
-    if (!lightRef.current) return;
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReducedMotion(preference.matches);
+    update();
+    preference.addEventListener('change', update);
+    return () => preference.removeEventListener('change', update);
+  }, []);
 
-    if (!active) {
-      lightRef.current.intensity = 0;
+  useEffect(() => {
+    nextFlash.current = nextInterval();
+    flashTime.current = -1;
+    if (material.current) material.current.uniforms.pulse.value = 0;
+  }, [active, reducedMotion]);
+
+  useFrame((_, delta) => {
+    if (!material.current) return;
+    if (!active || reducedMotion) {
+      material.current.uniforms.pulse.value = 0;
       return;
     }
 
-    flashTime.current = Math.max(0, flashTime.current - delta);
-    nextFlash.current -= delta;
-
+    // A resumed tab should not consume an entire interval in one frame.
+    const step = Math.min(Math.max(delta, 0), 0.05);
+    nextFlash.current -= step;
     if (nextFlash.current <= 0) {
-      flashTime.current = 0.08 + Math.random() * 0.08;
-      nextFlash.current = 2.5 + Math.random() * 5;
-      lightRef.current.position.set((Math.random() - 0.5) * 28, 12 + Math.random() * 8, -12 - Math.random() * 14);
+      flashTime.current = 0;
+      nextFlash.current = nextInterval();
     }
 
-    const pulse = flashTime.current > 0 ? 1 + Math.sin(state.clock.elapsedTime * 90) * 0.25 : 0;
-    lightRef.current.intensity = pulse * 45;
+    if (flashTime.current >= 0) {
+      flashTime.current += step;
+      const time = flashTime.current;
+      // Two brief, softly faded pulses separated by a pause.
+      const first = Math.max(0, 1 - Math.abs(time - 0.10) / 0.10);
+      const second = Math.max(0, 1 - Math.abs(time - 0.36) / 0.12);
+      material.current.uniforms.pulse.value = 0.14 * Math.max(first, second * 0.65);
+      if (time >= 0.48) flashTime.current = -1;
+    } else {
+      material.current.uniforms.pulse.value = 0;
+    }
   });
 
-  return <pointLight ref={lightRef} color="#dbe8ff" distance={80} decay={1.6} intensity={0} />;
+  if (!active || reducedMotion) return null;
+
+  return (
+    <mesh position={[0, 20, -80]} renderOrder={-50}>
+      <planeGeometry args={[400, 250]} />
+      <shaderMaterial
+        ref={material}
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        fog={false}
+        toneMapped={false}
+        blending={AdditiveBlending}
+        vertexShader={`
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform float pulse;
+          varying vec2 vUv;
+          void main() {
+            float glow = 1.0 - smoothstep(0.0, 0.72, length((vUv - vec2(0.5, 0.5)) * vec2(1.0, 1.1)));
+            gl_FragColor = vec4(0.72, 0.82, 1.0, pulse * glow);
+          }
+        `}
+      />
+    </mesh>
+  );
 }

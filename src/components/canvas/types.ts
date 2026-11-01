@@ -4,6 +4,9 @@ export type CloudConfig = {
   speed: number;
 };
 
+export type CloudProfile = 'cumulus' | 'stratus' | 'stratus-fractus' | 'stratus-undulatus'
+  | 'stratus-translucidus' | 'stratocumulus' | 'cirrus' | 'mixed';
+
 export type WeatherVisuals = {
   cloudColor: string;
   cloudOpacity: number;

@@ -88,13 +88,16 @@ test('time hook refreshes on timer, focus and visible resume, then cleans up', (
     removeEventListener: (name) => listeners.delete(name),
   };
   const { useTimeOfDay } = loadSource('src/hooks/useTimeOfDay.ts', {
-    '@/components/canvas/utils': { getTimeOfDay },
+    '@/components/canvas/solar': { getSolarVisuals: (date, latitude, longitude) => ({ date, latitude, longitude }) },
     react: {
       useState: (initialize) => [initialize(), (date) => { assert.ok(date instanceof Date); updates++; }],
       useEffect: (callback) => { cleanup = callback(); },
     },
   }, { Date, window, document });
-  useTimeOfDay();
+  const result = useTimeOfDay(50, 14);
+  assert.equal(result.latitude, 50);
+  assert.equal(result.longitude, 14);
+  assert.ok(result.date instanceof Date);
   assert.equal(updates, 0, 'effect must not synchronously set state');
   assert.equal(intervalDelay, 30_000);
   intervalCallback();

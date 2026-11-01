@@ -5,9 +5,15 @@ import { InstancedMesh, Object3D } from 'three';
 export function Rain({
   intensity,
   precipitation,
+  windSpeed = 0,
+  windDirection = 0,
+  color,
 }: {
   intensity: number;
   precipitation: 'none' | 'rain' | 'snow';
+  windSpeed?: number; // km/h
+  windDirection?: number; // meteorological degrees (direction the wind comes from)
+  color?: string;
 }) {
   const isSnow = precipitation === 'snow';
   const count = precipitation === 'none' ? 0 : Math.floor((isSnow ? 900 : 2000) * intensity);
@@ -33,26 +39,32 @@ export function Rain({
     const step = Math.min(Math.max(delta, 0), 0.05);
     const pos = positions.current;
     const vel = velocities.current;
+    const wind = Number.isFinite(windSpeed) ? Math.min(Math.max(windSpeed, 0), 50) : 0;
+    const direction = Number.isFinite(windDirection) ? windDirection : 0;
+    const drift = Math.sin(direction * Math.PI / 180) * wind * 0.05;
+    const driftZ = -Math.cos(direction * Math.PI / 180) * wind * 0.05;
     for (let i = 0; i < count; i++) {
-      const fallSpeed = vel[i] * 60 * intensity * (isSnow ? 1.3 : 4);
+      const fallSpeed = vel[i] * 60 * (isSnow ? 1.3 : 4);
       pos[i * 3 + 1] -= fallSpeed * step;
-      let swayStart = state.clock.elapsedTime - step;
+      const swayStart = state.clock.elapsedTime - step;
+      pos[i * 3] += drift * step;
+      pos[i * 3 + 2] += driftZ * step;
       if (pos[i * 3 + 1] < -10) {
         // Keep travel beyond the boundary, including any complete volume crossings.
         const overshoot = (-10 - pos[i * 3 + 1]) % 35;
         pos[i * 3 + 1] = 25 - overshoot;
-        pos[i * 3] = (Math.random() - 0.5) * 50;
-        pos[i * 3 + 2] = -(Math.random() * 20 + 2);
-        swayStart = state.clock.elapsedTime - overshoot / fallSpeed;
       }
       if (isSnow) {
-        // Integrate sway exactly, including only time since the last respawn.
+        // Integrate sway exactly across frames and volume crossings.
         pos[i * 3] += 0.36 / 0.8 * (
           Math.cos(swayStart * 0.8 + i) - Math.cos(state.clock.elapsedTime * 0.8 + i)
         );
       }
+      // Wrap horizontal movement without losing distance at the edge.
+      pos[i * 3] = ((pos[i * 3] + 25) % 50 + 50) % 50 - 25;
+      pos[i * 3 + 2] = ((pos[i * 3 + 2] + 22) % 20 + 20) % 20 - 22;
       dummy.current.position.set(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
-      dummy.current.rotation.z = isSnow ? state.clock.elapsedTime * 0.2 + i : -0.15;
+      dummy.current.rotation.z = isSnow ? state.clock.elapsedTime * 0.2 + i : Math.atan2(drift, fallSpeed);
       dummy.current.updateMatrix();
       meshRef.current.setMatrixAt(i, dummy.current.matrix);
     }
@@ -63,8 +75,8 @@ export function Rain({
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
-      {isSnow ? <circleGeometry args={[0.045, 8]} /> : <planeGeometry args={[0.03, 1.5]} />}
-      <meshBasicMaterial color={isSnow ? '#f5fbff' : '#9fc4e2'} transparent opacity={isSnow ? 0.75 : 0.38} side={2} />
+      {isSnow ? <circleGeometry args={[0.045, 8]} /> : <planeGeometry args={[0.025, 0.8]} />}
+      <meshBasicMaterial color={color ?? (isSnow ? '#f5fbff' : '#b6c4cf')} transparent depthWrite={false} opacity={isSnow ? 0.75 : 0.38} side={2} />
     </instancedMesh>
   );
 }

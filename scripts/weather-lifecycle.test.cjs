@@ -124,6 +124,71 @@ test('snow showers 85/86 map to snow; repeated consumers share the provider stat
   }
 });
 
+test('optional measurements are requested, bounded, and absent fields remain optional', async () => {
+  const h = createHarness({ fetcher: async () => ({
+    ok: true,
+    json: async () => ({ current: {
+      weather_code: 61, temperature_2m: 12, relative_humidity_2m: 55, wind_speed_10m: 8,
+      cloud_cover: 125, cloud_cover_low: -5, cloud_cover_mid: 42, cloud_cover_high: 105,
+      precipitation: -2, wind_direction_10m: -10,
+    } }),
+  }) });
+  await flush();
+  assert.match(h.calls[0].url, /cloud_cover,precipitation,wind_direction_10m/);
+  assert.match(h.calls[0].url, /cloud_cover_low,cloud_cover_mid,cloud_cover_high/);
+  assert.equal(h.state.weather.cloudCover, 100);
+  assert.equal(h.state.weather.cloudCoverLow, 0);
+  assert.equal(h.state.weather.cloudCoverMid, 42);
+  assert.equal(h.state.weather.cloudCoverHigh, 100);
+  assert.equal(h.state.weather.precipitation, 0);
+  assert.equal(h.state.weather.windDirection, 350);
+  assert.equal(h.state.weather.latitude, 1);
+  assert.equal(h.state.weather.longitude, 2);
+  h.cleanup();
+
+  const missing = createHarness();
+  await flush();
+  assert.equal(missing.state.status, 'ready');
+  assert.equal(missing.state.weather.cloudCover, undefined);
+  assert.equal(missing.state.weather.cloudCoverLow, undefined);
+  assert.equal(missing.state.weather.cloudCoverMid, undefined);
+  assert.equal(missing.state.weather.cloudCoverHigh, undefined);
+  assert.equal(missing.state.weather.precipitation, undefined);
+  assert.equal(missing.state.weather.windDirection, undefined);
+  missing.cleanup();
+});
+
+test('high cloud cover remains distinct from a clear lower sky', async () => {
+  const h = createHarness({ fetcher: async () => ({
+    ok: true,
+    json: async () => ({ current: {
+      weather_code: 2, temperature_2m: 12, relative_humidity_2m: 55, wind_speed_10m: 8,
+      cloud_cover_low: 0, cloud_cover_mid: 0, cloud_cover_high: 100,
+    } }),
+  }) });
+  await flush();
+  assert.equal(h.state.status, 'ready');
+  assert.equal(h.state.weather.cloudCoverLow, 0);
+  assert.equal(h.state.weather.cloudCoverMid, 0);
+  assert.equal(h.state.weather.cloudCoverHigh, 100);
+  h.cleanup();
+});
+
+test('precipitation accumulation is converted to an hourly equivalent', async () => {
+  for (const [interval, amount] of [[900, 1], [3600, 4], [undefined, 1], [0, 1]]) {
+    const h = createHarness({ fetcher: async () => ({
+      ok: true,
+      json: async () => ({ current: {
+        weather_code: 61, temperature_2m: 12, relative_humidity_2m: 55, wind_speed_10m: 8,
+        precipitation: amount, interval,
+      } }),
+    }) });
+    await flush();
+    assert.equal(h.state.weather.precipitation, 4, `interval ${interval}`);
+    h.cleanup();
+  }
+});
+
 test('location request failure falls back to Prague; denied location fetches Prague once', async () => {
   const fallback = createHarness({ fetcher: async (url, options, count) => {
     if (count === 1) throw new Error('network');
@@ -131,6 +196,8 @@ test('location request failure falls back to Prague; denied location fetches Pra
   } });
   await flush();
   assert.equal(fallback.state.source, 'prague');
+  assert.equal(fallback.state.weather.latitude, 50.0755);
+  assert.equal(fallback.state.weather.longitude, 14.4378);
   assert.equal(fallback.calls.length, 2);
   assert.match(fallback.calls[1].url, /latitude=50\.0755/);
   fallback.cleanup();
