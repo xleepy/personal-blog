@@ -17,7 +17,7 @@ const vertexShader = `
 const fragmentShader = `
   uniform vec3 topColor, horizonColor, sunDirection, sunColor, cloudColor;
   uniform vec2 cloudOffset;
-  uniform float cover, haze, daylight, sunVisibility, storm;
+  uniform float cover, haze, daylight, sunVisibility, starVisibility, storm;
   varying vec3 vDirection;
 
   float hash(vec2 p) {
@@ -48,17 +48,22 @@ const fragmentShader = `
     float twilight = exp(-abs(sunDirection.y) * 15.0) * (1.0 - haze) * (1.0 - daylight * 0.35);
     sky += sunColor * pow(sunDot, 3.0) * horizon * twilight * 0.12;
 
-    // Sparse, fixed stars fade through twilight and are occluded by clouds below.
+    // Each star keeps its brightness. Brighter stars emerge earlier in twilight.
     vec2 starUV = vec2(atan(dir.x, -dir.z), asin(clamp(dir.y, -1.0, 1.0))) * 240.0;
     vec2 cell = floor(starUV), local = fract(starUV) - 0.5;
     float seed = hash(cell);
     float star = (1.0 - smoothstep(0.015, 0.12 + fwidth(starUV.x), length(local))) * step(0.996, seed);
-    sky += vec3(0.55, 0.65, 0.85) * star * (1.0 - daylight) * smoothstep(0.0, 0.15, dir.y)
-      * (1.0 - haze) * (1.0 - smoothstep(0.7, 1.0, lowCover) * clamp(opticalDepth, 0.0, 1.0));
+    float brightness = clamp((seed - 0.996) / 0.004, 0.0, 1.0);
+    float fadeStart = sin(radians(mix(12.0, 4.0, brightness)));
+    float fadeEnd = sin(radians(mix(18.0, 10.0, brightness)));
+    float visibility = smoothstep(fadeStart, fadeEnd, -sunDirection.y) * starVisibility;
+    float starLight = star * mix(0.12, 1.0, brightness * brightness) * visibility * smoothstep(0.0, 0.15, dir.y);
 
-    sky = upperClouds(sky, dir, twilight);
-    sky = lowerClouds(sky, dir);
+    float starTransmission = 1.0;
+    sky = upperClouds(sky, dir, twilight, starTransmission);
+    sky = lowerClouds(sky, dir, starTransmission);
     sky = mix(sky, muted, haze * horizon * 0.48);
+    sky += vec3(0.55, 0.65, 0.85) * starLight * starTransmission;
     gl_FragColor = vec4(max(sky, vec3(0.0)), 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -88,6 +93,7 @@ export function SkyDome({ timeVisuals, visuals, windSpeed = 0, windDirection = 2
     cloudOffset: { value: new Vector2(3.2, 1.7) },
     cover: { value: visuals.cloudCover }, haze: { value: visuals.skyMute },
     daylight: { value: Math.max(0, Math.min(1, (targets.direction.y + 0.22) / 0.16)) }, sunVisibility: { value: visuals.sunVisibility },
+    starVisibility: { value: visuals.starVisibility },
     storm: { value: visuals.rainIntensity / 1.55 },
     cloudNoise: { value: noiseTexture },
     lowCover: { value: visuals.lowCloudCover }, highCover: { value: visuals.highCloudCover },
@@ -121,6 +127,7 @@ export function SkyDome({ timeVisuals, visuals, windSpeed = 0, windDirection = 2
     uniforms.marchSteps.value = state.size.width < 600 ? 22 : 36;
     uniforms.haze.value = approach(uniforms.haze.value, visuals.skyMute);
     uniforms.sunVisibility.value = approach(uniforms.sunVisibility.value, visuals.sunVisibility);
+    uniforms.starVisibility.value = approach(uniforms.starVisibility.value, visuals.starVisibility);
     uniforms.storm.value = approach(uniforms.storm.value, visuals.rainIntensity / 1.55);
     uniforms.daylight.value = approach(uniforms.daylight.value, Math.max(0, Math.min(1, (targets.direction.y + 0.22) / 0.16)));
     const speed = Math.max(0, Math.min(windSpeed, 100)) * 0.00045;
