@@ -72,10 +72,16 @@ export default function WeatherDebugPanel({ settings, onChange, weather }: Props
           </select>
         </label>
         {settings.time === 'custom' && (
-          <label className={styles.rangeField}>
-            <span>Время UTC: {String(hour).padStart(2, '0')}:{String(minutes).padStart(2, '0')}</span>
-            <input type="range" min="0" max="23.75" step="0.25" value={settings.hour} onChange={(event) => onChange({ ...settings, hour: Number(event.target.value) })} />
-          </label>
+          <>
+            <label className={styles.rangeField}>
+              <span>Дата UTC</span>
+              <input type="date" value={settings.date} onChange={(event) => onChange({ ...settings, date: event.target.value })} />
+            </label>
+            <label className={styles.rangeField}>
+              <span>Время UTC: {String(hour).padStart(2, '0')}:{String(minutes).padStart(2, '0')}</span>
+              <input type="range" min="0" max="23.75" step="0.25" value={settings.hour} onChange={(event) => onChange({ ...settings, hour: Number(event.target.value) })} />
+            </label>
+          </>
         )}
         <p className={styles.note}>Пресеты времени: Прага, равноденствие.</p>
         <fieldset className={styles.measurements} disabled={settings.weather === 'unavailable'}>

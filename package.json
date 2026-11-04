@@ -26,6 +26,7 @@
     "react-feather": "^2.0.10",
     "remark-frontmatter": "^5.0.0",
     "remark-mdx-frontmatter": "^5.2.0",
+    "suncalc": "2.1.1",
     "three": "^0.184.0"
   },
   "devDependencies": {

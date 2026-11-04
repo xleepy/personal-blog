@@ -1,5 +1,6 @@
 import type { TimeOfDay, TimeVisuals } from './types';
 import { blendTimeVisuals } from './utils';
+import { getLunarVisuals } from './lunar';
 
 const RAD = Math.PI / 180;
 
@@ -64,5 +65,10 @@ export function getSolarVisuals(now: Date, latitude = 50.0755, longitude = 14.43
   else if (solar.solarHour < 10) period = 'morning';
   else if (solar.solarHour < 14) period = 'midday';
   else period = 'afternoon';
-  return { ...solar, period, timeVisuals: { ...timeVisuals, sunPosition: solar.direction } };
+  return {
+    ...solar,
+    period,
+    timeVisuals: { ...timeVisuals, sunPosition: solar.direction },
+    moon: getLunarVisuals(now, latitude, longitude, solar.direction),
+  };
 }

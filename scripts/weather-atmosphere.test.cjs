@@ -59,6 +59,40 @@ test('polar day and night remain finite and elevations change continuously', () 
   }
 });
 
+test('lunar position, illumination and angular size agree with Horizons', () => {
+  // JPL Horizons observer table, target 301, geodetic coordinates at 0 km,
+  // APPARENT=AIRLESS and QUANTITIES=4,10,13 (azimuth, altitude, illumination, diameter).
+  // https://ssd-api.jpl.nasa.gov/doc/horizons.html
+  const sydney = [-33.8688, 151.2093];
+  const fixtures = [
+    [prague, '2026-10-18T18:00:00Z', 192.287884, 14.597398, 0.5058627, 1787.575],
+    [prague, '2026-11-09T23:00:00Z', 354.059622, -64.106284, 0.0066343, 1768.013],
+    [sydney, '2026-11-24T13:00:00Z', 8.581326, 29.492403, 0.9974053, 2003.431],
+  ];
+  const degrees = 180 / Math.PI;
+  for (const [coordinates, date, azimuth, altitude, fraction, diameter] of fixtures) {
+    const { moon } = getSolarVisuals(new Date(date), ...coordinates);
+    const [x, y, z] = moon.direction;
+    const moonAzimuth = (Math.atan2(-x, z) * degrees + 360) % 360;
+    const moonAltitude = Math.asin(y) * degrees;
+    const diameterArcseconds = Math.asin(moon.sinRadius) * degrees * 7200;
+    // SunCalc uses apparent altitude with refraction and an Earth-centered distance.
+    assert.ok(Math.abs(moonAzimuth - azimuth) < 0.15, `${date}: azimuth ${moonAzimuth}`);
+    assert.ok(Math.abs(moonAltitude - altitude) < 0.6, `${date}: altitude ${moonAltitude}`);
+    assert.ok(Math.abs(moon.fraction - fraction) < 0.01, `${date}: fraction ${moon.fraction}`);
+    assert.ok(Math.abs(diameterArcseconds - diameter) < 35, `${date}: diameter ${diameterArcseconds}`);
+    assert.ok(Math.abs(Math.hypot(...moon.lightDirection) - 1) < 1e-6, `${date}: light direction`);
+  }
+});
+
+test('the waxing quarter faces the Sun and lights half the apparent disk', () => {
+  const { moon, direction: sunDirection } = getSolarVisuals(new Date('2026-10-18T18:00:00Z'), ...prague);
+  const dot = (a, b) => a.reduce((sum, component, index) => sum + component * b[index], 0);
+  // At this quarter the Sun lies almost in the Moon's sky plane.
+  assert.ok(dot(moon.lightDirection, sunDirection) > 0.99);
+  assert.ok(Math.abs(dot(moon.lightDirection, moon.direction)) < 0.03);
+});
+
 test('measured cloud and precipitation values control atmosphere without inventing rain', () => {
   const weather = { condition: 'rain', cloudCover: 0, precipitation: 0 };
   const clear = getAtmosphere(weather);

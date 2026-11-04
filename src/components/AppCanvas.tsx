@@ -55,7 +55,7 @@ export const AppCanvas = () => {
   const weather = process.env.NODE_ENV === 'development' ? getDebugWeather(liveWeather, debug) : liveWeather;
   const visuals = getAtmosphere(weather, process.env.NODE_ENV === 'development' ? debug.clouds : 'auto');
   const liveTime = useTimeOfDay(liveWeather?.latitude, liveWeather?.longitude);
-  const { period, timeVisuals } = (process.env.NODE_ENV === 'development' ? getDebugTime(debug) : null) ?? liveTime;
+  const { period, timeVisuals, moon } = (process.env.NODE_ENV === 'development' ? getDebugTime(debug) : null) ?? liveTime;
   const debugActive = process.env.NODE_ENV === 'development' && isWeatherDebugActive(debug);
   const fallbackTop = blendColor(timeVisuals.zenithColor, timeVisuals.cloudTint, visuals.skyMute);
   const fallbackHorizon = blendColor(timeVisuals.horizonColor, timeVisuals.cloudTint, visuals.skyMute);
@@ -105,7 +105,7 @@ export const AppCanvas = () => {
             camera={{ position: [0, 0, 5], fov: 60 }} onCreated={({ camera }) => camera.lookAt(0, 5.2, -5)}>
             <SkyFrameBudget />
             <SceneBackground timeVisuals={timeVisuals} visuals={visuals} />
-            <Sky windSpeed={weather?.windSpeed} windDirection={weather?.windDirection} visuals={visuals} timeVisuals={timeVisuals} />
+            <Sky windSpeed={weather?.windSpeed} windDirection={weather?.windDirection} visuals={visuals} timeVisuals={timeVisuals} moon={moon} />
             <Rain intensity={visuals.rainIntensity} precipitation={visuals.precipitation}
               windSpeed={weather?.windSpeed} windDirection={weather?.windDirection} color={timeVisuals.cloudTint} />
             <Lightning active={weather?.condition === 'thunderstorm'} />

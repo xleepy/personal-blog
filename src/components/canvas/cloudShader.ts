@@ -102,7 +102,7 @@ export const CLOUD_SHADER = `
     density = mix(density, puffs, cellularDeck);
     return density * heightMask * smoothstep(0.0, 0.05, lowCover);
   }
-  vec3 upperClouds(vec3 sky, vec3 dir, float twilight, inout float starTransmission) {
+  vec3 upperClouds(vec3 sky, vec3 dir, float twilight, vec3 moonScatter, inout float celestialTransmission) {
     if (highCover < 0.005 || dir.y <= 0.0) return sky;
     vec2 p = dir.xz / max(dir.y, 0.08) * 1.4 + cloudOffset * 0.55;
     vec2 curl = vec2(cloudFbm(vec3(p * 0.35, 9.0)), cloudFbm(vec3(p * 0.35, 37.0)));
@@ -114,10 +114,11 @@ export const CLOUD_SHADER = `
       * smoothstep(0.28, 0.7, fibres) * highCover * 0.65 * smoothstep(0.0, 0.12, dir.y);
     // High ice clouds can still catch warm light while the lower deck has darkened.
     vec3 iceColor = cloudColor * 0.95 + sunColor * twilight * 0.14 * smoothstep(-0.08, -0.02, sunDirection.y);
-    starTransmission *= 1.0 - veil;
+    celestialTransmission *= 1.0 - veil;
+    iceColor += moonScatter;
     return mix(sky, iceColor, veil);
   }
-  vec3 fractusClouds(vec3 sky, vec3 dir, inout float starTransmission) {
+  vec3 fractusClouds(vec3 sky, vec3 dir, vec3 moonScatter, inout float celestialTransmission) {
     float distance = cloudBase() / max(dir.y, 0.02);
     vec2 p = dir.xz * distance * vec2(0.46, 0.62) + cloudOffset;
     float body = cloudFbm(vec3(p, 9.3));
@@ -126,26 +127,27 @@ export const CLOUD_SHADER = `
     float threshold = 0.5 - 0.045 * log(fraction / (1.0 - fraction));
     float shreds = smoothstep(threshold - 0.025, threshold + 0.065, body - (erosion - 0.5) * 0.18);
     float opacity = shreds * 0.82 * exp(-distance * 0.018) * smoothstep(0.02, 0.13, dir.y);
-    vec3 light = cloudColor * (0.65 + body * 0.25);
-    starTransmission *= 1.0 - opacity;
+    vec3 light = cloudColor * (0.65 + body * 0.25) + moonScatter;
+    celestialTransmission *= 1.0 - opacity;
     return mix(sky, light, opacity);
   }
-  vec3 lowerClouds(vec3 sky, vec3 dir, inout float starTransmission) {
+  vec3 lowerClouds(vec3 sky, vec3 dir, vec3 moonScatter, inout float celestialTransmission) {
     if (lowCover < 0.005 || dir.y < 0.025) return sky;
     // Fractus is rendered as thin torn fragments, without extruding each shred
     // into an artificial vertical pillar or undersampling its tiny thickness.
-    if (raggedness > 0.999) return fractusClouds(sky, dir, starTransmission);
+    if (raggedness > 0.999) return fractusClouds(sky, dir, moonScatter, celestialTransmission);
     float entry = max(0.1, cloudBase() - 0.5) / dir.y;
     float exitPoint = min((cloudBase() + layerDepth() + 0.5) / dir.y, 70.0);
     if (entry >= exitPoint) return sky;
     float stepLength = (exitPoint - entry) / marchSteps;
     float jitter = 0.5 + (hash(gl_FragCoord.xy + 0.37) - 0.5) * 0.3;
     float transmittance = 1.0;
+    const float minTransmission = 0.015;
     vec3 scattered = vec3(0.0);
     vec3 lightDir = normalize(sunDirection + vec3(0.0, 0.08, 0.0));
     float forwardScatter = pow(max(dot(dir, lightDir), 0.0), 12.0);
     for (int i = 0; i < 40; i++) {
-      if (float(i) >= marchSteps || transmittance < 0.015) break;
+      if (float(i) >= marchSteps || transmittance < minTransmission) break;
       vec3 p = dir * (entry + (float(i) + jitter) * stepLength);
       float density = cloudDensity(p);
       if (density > 0.005) {
@@ -161,14 +163,19 @@ export const CLOUD_SHADER = `
         float ambient = mix(mix(0.68, 0.57, deck), 0.8, h) - (column - 0.5) * mix(0.08, 0.38, deck);
         vec3 lighting = cloudColor * (ambient + sunlight * 0.18) * (1.0 - storm * 0.45);
         lighting += sunColor * sunlight * forwardScatter * daylight * (1.0 - haze) * 0.035;
+        if (moonScatter.b > 0.0) {
+          // Approximate the remaining path to the cloud top along the lunar direction.
+          float moonDepth = density * (1.0 - h) * layerDepth() * opticalDepth / max(0.18, moonDirection.y);
+          lighting += moonScatter * exp(-moonDepth);
+        }
         float opacity = 1.0 - exp(-density * stepLength * 2.0 * opticalDepth);
         scattered += transmittance * opacity * lighting;
         transmittance *= 1.0 - opacity;
       }
     }
     vec3 result = sky * transmittance + scattered;
-    // The distant cloud color softens, while dense clouds still block direct starlight.
-    starTransmission *= transmittance;
+    // A ray terminated at the opacity cutoff cannot show a direct light source.
+    celestialTransmission *= max(0.0, (transmittance - minTransmission) / (1.0 - minTransmission));
     // Atmospheric perspective softens the distant deck instead of a hard cutoff.
     float distanceFade = exp(-entry * 0.02) * smoothstep(0.025, 0.12, dir.y);
     return mix(sky, result, distanceFade);

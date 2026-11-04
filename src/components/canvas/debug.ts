@@ -2,10 +2,13 @@ import type { WeatherCondition, WeatherData } from '@/hooks/useWeather';
 import type { CloudProfile, TimeOfDay } from './types';
 import { getSolarVisuals } from './solar';
 
+const REFERENCE_DATE = '2026-03-20';
+
 export type WeatherDebugSettings = {
   weather: 'live' | WeatherCondition | 'unavailable';
   time: 'live' | TimeOfDay | 'custom';
   hour: number;
+  date: string;
   clouds: 'auto' | CloudProfile;
   cloudCover: number | null;
   precipitation: number | null;
@@ -14,7 +17,7 @@ export type WeatherDebugSettings = {
 };
 
 export const DEFAULT_DEBUG_SETTINGS: WeatherDebugSettings = {
-  weather: 'live', time: 'live', hour: 11, clouds: 'auto',
+  weather: 'live', time: 'live', hour: 11, date: REFERENCE_DATE, clouds: 'auto',
   cloudCover: null, precipitation: null, windSpeed: null, windDirection: null,
 };
 
@@ -73,5 +76,7 @@ export function getDebugTime(settings: WeatherDebugSettings) {
   if (settings.time === 'live') return null;
   const hour = settings.time === 'custom' ? settings.hour : PRESET_HOURS[settings.time];
   // A fixed reference location/date makes every preset available, including in polar night.
-  return getSolarVisuals(new Date(Date.UTC(2026, 2, 20) + hour * 3_600_000), 50.0755, 14.4378);
+  const customDate = settings.time === 'custom' ? Date.parse(`${settings.date}T00:00:00Z`) : NaN;
+  const midnight = Number.isFinite(customDate) ? customDate : Date.parse(`${REFERENCE_DATE}T00:00:00Z`);
+  return getSolarVisuals(new Date(midnight + hour * 3_600_000), 50.0755, 14.4378);
 }

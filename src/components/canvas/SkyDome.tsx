@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { BackSide, Color, ShaderMaterial, Vector2, Vector3 } from 'three';
 import type { TimeVisuals } from './types';
 import type { Atmosphere } from './atmosphere';
+import type { LunarVisuals } from './lunar';
 import { createCloudNoise } from './cloudNoise';
 import { CLOUD_SHADER } from './cloudShader';
 
@@ -16,9 +17,12 @@ const vertexShader = `
 
 const fragmentShader = `
   uniform vec3 topColor, horizonColor, sunDirection, sunColor, cloudColor;
+  uniform vec3 moonDirection, moonLightDirection;
   uniform vec2 cloudOffset;
-  uniform float cover, haze, daylight, sunVisibility, starVisibility, storm;
+  uniform float cover, haze, daylight, sunVisibility, celestialVisibility, storm;
+  uniform float moonSinRadius, moonFraction;
   varying vec3 vDirection;
+  const vec3 moonColor = vec3(0.79, 0.88, 1.0);
 
   float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -48,6 +52,28 @@ const fragmentShader = `
     float twilight = exp(-abs(sunDirection.y) * 15.0) * (1.0 - haze) * (1.0 - daylight * 0.35);
     sky += sunColor * pow(sunDot, 3.0) * horizon * twilight * 0.12;
 
+    float moonDot = max(dot(dir, moonDirection), 0.0);
+    float moonlight = pow(moonFraction, 2.5) * smoothstep(0.0, 0.22, moonDirection.y)
+      * (1.0 - daylight) * celestialVisibility;
+    float moonHalo = pow(moonDot, 12.0);
+    sky += moonColor * moonlight * (0.003 + moonHalo * 0.028 + pow(moonDot, 85.0) * 0.11);
+    vec3 moonScatter = moonColor * moonlight * (0.008 + moonHalo * 0.034);
+
+    // Shade a sphere in the tangent plane. The projected Sun sets the bright limb.
+    float pixelAngle = 0.45 * max(length(dFdx(dir)), length(dFdy(dir)));
+    float moonDisc = 0.0;
+    float moonSurfaceLight = 0.0;
+    if (moonDot > 0.9995 && dir.y > -pixelAngle) {
+      vec3 offset = (dir - moonDirection * moonDot) / moonSinRadius;
+      float radius = length(offset);
+      float edge = max(pixelAngle / moonSinRadius, 0.001);
+      moonDisc = (1.0 - smoothstep(1.0 - edge, 1.0 + edge, radius)) * smoothstep(-pixelAngle, pixelAngle, dir.y);
+      vec3 normal = offset / max(1.0, radius) - moonDirection * sqrt(max(0.0, 1.0 - radius * radius));
+      float incidence = dot(normal, moonLightDirection);
+      float phaseEdge = min(0.18, edge * 0.35);
+      moonSurfaceLight = smoothstep(-phaseEdge, phaseEdge, incidence) * (0.72 + 0.28 * max(incidence, 0.0));
+    }
+
     // Each star keeps its brightness. Brighter stars emerge earlier in twilight.
     vec2 starUV = vec2(atan(dir.x, -dir.z), asin(clamp(dir.y, -1.0, 1.0))) * 240.0;
     vec2 cell = floor(starUV), local = fract(starUV) - 0.5;
@@ -56,23 +82,27 @@ const fragmentShader = `
     float brightness = clamp((seed - 0.996) / 0.004, 0.0, 1.0);
     float fadeStart = sin(radians(mix(12.0, 4.0, brightness)));
     float fadeEnd = sin(radians(mix(18.0, 10.0, brightness)));
-    float visibility = smoothstep(fadeStart, fadeEnd, -sunDirection.y) * starVisibility;
+    float visibility = smoothstep(fadeStart, fadeEnd, -sunDirection.y) * celestialVisibility;
     float starLight = star * mix(0.12, 1.0, brightness * brightness) * visibility * smoothstep(0.0, 0.15, dir.y);
 
-    float starTransmission = 1.0;
-    sky = upperClouds(sky, dir, twilight, starTransmission);
-    sky = lowerClouds(sky, dir, starTransmission);
+    float celestialTransmission = 1.0;
+    sky = upperClouds(sky, dir, twilight, moonScatter, celestialTransmission);
+    sky = lowerClouds(sky, dir, moonScatter, celestialTransmission);
     sky = mix(sky, muted, haze * horizon * 0.48);
-    sky += vec3(0.55, 0.65, 0.85) * starLight * starTransmission;
+    sky += vec3(0.55, 0.65, 0.85) * starLight * (1.0 - moonDisc) * celestialTransmission;
+    float moonContrast = mix(1.05, 0.40, daylight) * mix(0.4, 1.0, smoothstep(0.0, 0.22, moonDirection.y));
+    sky += moonColor * moonDisc * moonSurfaceLight * moonContrast * smoothstep(0.002, 0.02, moonFraction)
+      * celestialTransmission * celestialVisibility;
     gl_FragColor = vec4(max(sky, vec3(0.0)), 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
 `;
 
-export function SkyDome({ timeVisuals, visuals, windSpeed = 0, windDirection = 270 }: {
+export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirection = 270 }: {
   timeVisuals: TimeVisuals;
   visuals: Atmosphere;
+  moon: LunarVisuals;
   windSpeed?: number;
   windDirection?: number;
 }) {
@@ -85,15 +115,20 @@ export function SkyDome({ timeVisuals, visuals, windSpeed = 0, windDirection = 2
     sun: new Color(timeVisuals.sunGlowColor),
     cloud: new Color(timeVisuals.cloudTint),
     direction: new Vector3(...timeVisuals.sunPosition).normalize(),
-  }), [timeVisuals]);
+    moonDirection: new Vector3(...moon.direction),
+    moonLightDirection: new Vector3(...moon.lightDirection).normalize(),
+  }), [timeVisuals, moon]);
   const [uniforms] = useState(() => ({
     topColor: { value: targets.top.clone() }, horizonColor: { value: targets.horizon.clone() },
     sunColor: { value: targets.sun.clone() }, cloudColor: { value: targets.cloud.clone() },
     sunDirection: { value: targets.direction.clone() },
+    moonDirection: { value: targets.moonDirection.clone() },
+    moonLightDirection: { value: targets.moonLightDirection.clone() },
+    moonSinRadius: { value: moon.sinRadius }, moonFraction: { value: moon.fraction },
     cloudOffset: { value: new Vector2(3.2, 1.7) },
     cover: { value: visuals.cloudCover }, haze: { value: visuals.skyMute },
     daylight: { value: Math.max(0, Math.min(1, (targets.direction.y + 0.22) / 0.16)) }, sunVisibility: { value: visuals.sunVisibility },
-    starVisibility: { value: visuals.starVisibility },
+    celestialVisibility: { value: visuals.celestialVisibility },
     storm: { value: visuals.rainIntensity / 1.55 },
     cloudNoise: { value: noiseTexture },
     lowCover: { value: visuals.lowCloudCover }, highCover: { value: visuals.highCloudCover },
@@ -115,6 +150,12 @@ export function SkyDome({ timeVisuals, visuals, windSpeed = 0, windDirection = 2
     uniforms.sunColor.value.lerp(targets.sun, alpha);
     uniforms.cloudColor.value.lerp(targets.cloud, alpha);
     uniforms.sunDirection.value.lerp(targets.direction, alpha).normalize();
+    // Smooth clock ticks, and place the Moon immediately after a location or preview jump.
+    const moonAlpha = uniforms.moonDirection.value.dot(targets.moonDirection) > 0.999 ? alpha : 1;
+    uniforms.moonDirection.value.lerp(targets.moonDirection, moonAlpha).normalize();
+    uniforms.moonLightDirection.value.lerp(targets.moonLightDirection, moonAlpha).normalize();
+    uniforms.moonSinRadius.value += (moon.sinRadius - uniforms.moonSinRadius.value) * moonAlpha;
+    uniforms.moonFraction.value += (moon.fraction - uniforms.moonFraction.value) * moonAlpha;
     const approach = (current: number, target: number) => current + (target - current) * alpha;
     uniforms.cover.value = approach(uniforms.cover.value, visuals.cloudCover);
     uniforms.lowCover.value = approach(uniforms.lowCover.value, visuals.lowCloudCover);
@@ -127,7 +168,7 @@ export function SkyDome({ timeVisuals, visuals, windSpeed = 0, windDirection = 2
     uniforms.marchSteps.value = state.size.width < 600 ? 22 : 36;
     uniforms.haze.value = approach(uniforms.haze.value, visuals.skyMute);
     uniforms.sunVisibility.value = approach(uniforms.sunVisibility.value, visuals.sunVisibility);
-    uniforms.starVisibility.value = approach(uniforms.starVisibility.value, visuals.starVisibility);
+    uniforms.celestialVisibility.value = approach(uniforms.celestialVisibility.value, visuals.celestialVisibility);
     uniforms.storm.value = approach(uniforms.storm.value, visuals.rainIntensity / 1.55);
     uniforms.daylight.value = approach(uniforms.daylight.value, Math.max(0, Math.min(1, (targets.direction.y + 0.22) / 0.16)));
     const speed = Math.max(0, Math.min(windSpeed, 100)) * 0.00045;

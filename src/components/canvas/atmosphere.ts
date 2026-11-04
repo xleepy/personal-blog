@@ -53,7 +53,7 @@ export function getAtmosphere(weather: WeatherData | null, cloudOverride: CloudP
     rainIntensity,
     // Fog is scattering near the observer; it is independent of the cloud layer.
     skyMute: isFog ? 0.94 : Math.min(0.9, overcast * (thin ? 0.12 : 0.54) + precipitationHaze),
-    starVisibility: isFog ? 0 : 1 - precipitationHaze,
+    celestialVisibility: isFog ? 0 : 1 - precipitationHaze,
     sunVisibility: (1 - lowCloudCover * (thin ? 0.35 : 0.92)) * (1 - highCloudCover * 0.2) * (isFog ? 0.12 : 1),
     cloudOpacity: 0.75 + overcast * 0.25,
   };
