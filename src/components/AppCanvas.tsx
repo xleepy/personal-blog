@@ -18,7 +18,6 @@ const WeatherDebugPanel = process.env.NODE_ENV === 'development'
   ? dynamic(() => import('./WeatherDebugPanel'), { ssr: false })
   : null;
 
-const SKY_PIXEL_BUDGET = 640 * 360;
 const SKY_FRAME_INTERVAL = 1000 / 24;
 const SKY_CONTEXT_OPTIONS = {
   failIfMajorPerformanceCaveat: true,
@@ -51,7 +50,7 @@ function SkyFrameBudget() {
 export const AppCanvas = () => {
   const { weather: liveWeather } = useWeather();
   const [debug, setDebug] = useState(DEFAULT_DEBUG_SETTINGS);
-  const [skyDpr, setSkyDpr] = useState<number | null>(null);
+  const [canvasDpr, setCanvasDpr] = useState<number | null>(null);
   const weather = process.env.NODE_ENV === 'development' ? getDebugWeather(liveWeather, debug) : liveWeather;
   const visuals = getAtmosphere(weather, process.env.NODE_ENV === 'development' ? debug.clouds : 'auto');
   const liveTime = useTimeOfDay(liveWeather?.latitude, liveWeather?.longitude);
@@ -62,14 +61,13 @@ export const AppCanvas = () => {
 
   useEffect(() => {
     const updateDpr = () => {
-      const viewportPixels = Math.max(1, window.innerWidth * window.innerHeight);
-      setSkyDpr(Math.min(1, Math.sqrt(SKY_PIXEL_BUDGET / viewportPixels)));
+      setCanvasDpr(window.devicePixelRatio || 1);
     };
     const frame = window.requestAnimationFrame(() => {
       // Keep the CSS sky when WebGL would fall back to software rendering.
       const context = document.createElement('canvas').getContext('webgl2', SKY_CONTEXT_OPTIONS);
       if (!context || !('getExtension' in context)) {
-        setSkyDpr(0);
+        setCanvasDpr(0);
         return;
       }
       context.getExtension('WEBGL_lose_context')?.loseContext();
@@ -99,9 +97,9 @@ export const AppCanvas = () => {
   return (
     <>
       <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden="true"
-        style={skyDpr === null ? undefined : { background: `linear-gradient(${fallbackTop}, ${fallbackHorizon})` }}>
-        {!!skyDpr && (
-          <Canvas dpr={skyDpr} frameloop="demand" gl={SKY_CONTEXT_OPTIONS}
+        style={canvasDpr === null ? undefined : { background: `linear-gradient(${fallbackTop}, ${fallbackHorizon})` }}>
+        {!!canvasDpr && (
+          <Canvas dpr={canvasDpr} frameloop="demand" gl={SKY_CONTEXT_OPTIONS}
             camera={{ position: [0, 0, 5], fov: 60 }} onCreated={({ camera }) => camera.lookAt(0, 5.2, -5)}>
             <SkyFrameBudget />
             <SceneBackground timeVisuals={timeVisuals} visuals={visuals} />

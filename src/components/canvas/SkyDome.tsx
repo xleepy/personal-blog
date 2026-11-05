@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { BackSide, Color, ShaderMaterial, Vector2, Vector3 } from 'three';
+import { createPortal, useFrame, useThree } from '@react-three/fiber';
+import { BackSide, Color, HalfFloatType, Scene, ShaderMaterial, UnsignedByteType, Vector2, Vector3, WebGLRenderTarget } from 'three';
 import type { TimeVisuals } from './types';
 import type { Atmosphere } from './atmosphere';
 import type { LunarVisuals } from './lunar';
 import { createCloudNoise } from './cloudNoise';
 import { CLOUD_SHADER } from './cloudShader';
+
+const SKY_PIXEL_BUDGET = 640 * 360;
 
 const vertexShader = `
   varying vec3 vDirection;
@@ -45,10 +47,8 @@ const fragmentShader = `
     float sunDot = max(dot(dir, sunDirection), 0.0);
     float aboveHorizon = smoothstep(-0.018, 0.005, sunDirection.y);
     float halo = pow(sunDot, 12.0) * 0.12 + pow(sunDot, 120.0) * 0.22;
-    // The sun subtends ~0.53 degrees; derivatives keep the small disc stable.
-    float discWidth = max(fwidth(sunDot), 0.000002);
-    float disc = smoothstep(0.999989 - discWidth, 0.999989 + discWidth, sunDot);
-    sky += sunColor * (halo + disc * 2.8) * aboveHorizon * sunVisibility;
+    // The small solar disc is added at display resolution after the cloud pass.
+    sky += sunColor * halo * aboveHorizon * sunVisibility;
     float twilight = exp(-abs(sunDirection.y) * 15.0) * (1.0 - haze) * (1.0 - daylight * 0.35);
     sky += sunColor * pow(sunDot, 3.0) * horizon * twilight * 0.12;
 
@@ -93,12 +93,37 @@ const fragmentShader = `
     float moonContrast = mix(1.05, 0.40, daylight) * mix(0.4, 1.0, smoothstep(0.0, 0.22, moonDirection.y));
     sky += moonColor * moonDisc * moonSurfaceLight * moonContrast * smoothstep(0.002, 0.02, moonFraction)
       * celestialTransmission * celestialVisibility;
-    gl_FragColor = vec4(max(sky, vec3(0.0)), 1.0);
-    #include <tonemapping_fragment>
+    // Keep RGB linear and store direct-light transmission separately from cloud color.
+    float sunTransmission = celestialTransmission * (1.0 - haze * horizon * 0.48);
+    gl_FragColor = vec4(max(sky, vec3(0.0)), sunTransmission);
+  }
+`;
+
+const compositeShader = `
+  uniform sampler2D skyTexture;
+  uniform vec2 outputResolution;
+  uniform vec3 sunDirection, sunColor;
+  uniform float sunVisibility;
+  varying vec3 vDirection;
+
+  void main() {
+    vec3 dir = normalize(vDirection);
+    vec4 sky = texture2D(skyTexture, gl_FragCoord.xy / outputResolution);
+    // A tangent-plane distance stays well-conditioned at the centre of the disc.
+    // Its ~0.53 degree diameter is smoothed over one display pixel, not one cloud pixel.
+    float sunDot = dot(dir, sunDirection);
+    float radius = length(dir - sunDirection * sunDot);
+    float edge = max(fwidth(radius), 0.000001);
+    float disc = (1.0 - smoothstep(0.00469 - edge * 0.5, 0.00469 + edge * 0.5, radius)) * step(0.0, sunDot);
+    float aboveHorizon = smoothstep(-0.018, 0.005, sunDirection.y);
+    vec3 color = sky.rgb + sunColor * disc * 2.8 * aboveHorizon * sunVisibility * sky.a;
+    gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
     #include <colorspace_fragment>
   }
 `;
 
+// Renders the sky at a bounded cloud cost, then adds a native-resolution solar disc.
+// Both passes share a camera and smoothed sun uniforms; cloud transmission occludes the disc.
 export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirection = 270 }: {
   timeVisuals: TimeVisuals;
   visuals: Atmosphere;
@@ -106,9 +131,22 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
   windSpeed?: number;
   windDirection?: number;
 }) {
+  const gl = useThree((state) => state.gl);
   const materialRef = useRef<ShaderMaterial>(null);
+  const compositeRef = useRef<ShaderMaterial>(null);
   const [noiseTexture] = useState(createCloudNoise);
-  useEffect(() => () => noiseTexture.dispose(), [noiseTexture]);
+  const [skyScene] = useState(() => new Scene());
+  const [skyTarget] = useState(() => new WebGLRenderTarget(1, 1, {
+    // Preserve linear sky radiance where supported; WebGL2 also supports the byte fallback.
+    type: gl.extensions.has('EXT_color_buffer_float') || gl.extensions.has('EXT_color_buffer_half_float')
+      ? HalfFloatType : UnsignedByteType,
+    depthBuffer: false,
+    stencilBuffer: false,
+  }));
+  useEffect(() => () => {
+    noiseTexture.dispose();
+    skyTarget.dispose();
+  }, [noiseTexture, skyTarget]);
   const targets = useMemo(() => ({
     top: new Color(timeVisuals.zenithColor),
     horizon: new Color(timeVisuals.horizonColor),
@@ -137,10 +175,18 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
     opticalDepth: { value: visuals.cloudOpticalDepth },
     marchSteps: { value: 36 },
   }));
+  const [compositeUniforms] = useState(() => ({
+    skyTexture: { value: skyTarget.texture },
+    outputResolution: { value: new Vector2() },
+    sunDirection: uniforms.sunDirection,
+    sunColor: uniforms.sunColor,
+    sunVisibility: { value: visuals.sunVisibility },
+  }));
 
   useFrame((state, delta) => {
     const uniforms = materialRef.current?.uniforms;
-    if (!uniforms) return;
+    const composite = compositeRef.current?.uniforms;
+    if (!uniforms || !composite) return;
     const step = Math.min(delta, 0.05);
     // Weather/UI transitions follow elapsed time even in a throttled background tab.
     // Only physical advection uses the capped step, to avoid teleporting clouds on resume.
@@ -168,6 +214,8 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
     uniforms.marchSteps.value = state.size.width < 600 ? 22 : 36;
     uniforms.haze.value = approach(uniforms.haze.value, visuals.skyMute);
     uniforms.sunVisibility.value = approach(uniforms.sunVisibility.value, visuals.sunVisibility);
+    // R3F copies scalar uniform values per material; keep both passes in the same frame.
+    composite.sunVisibility.value = uniforms.sunVisibility.value;
     uniforms.celestialVisibility.value = approach(uniforms.celestialVisibility.value, visuals.celestialVisibility);
     uniforms.storm.value = approach(uniforms.storm.value, visuals.rainIntensity / 1.55);
     uniforms.daylight.value = approach(uniforms.daylight.value, Math.max(0, Math.min(1, (targets.direction.y + 0.22) / 0.16)));
@@ -175,13 +223,35 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
     const angle = windDirection * Math.PI / 180;
     uniforms.cloudOffset.value.x -= Math.sin(angle) * speed * step;
     uniforms.cloudOffset.value.y += Math.cos(angle) * speed * step;
+
+    const scale = Math.min(1, Math.sqrt(SKY_PIXEL_BUDGET / Math.max(1, state.size.width * state.size.height)));
+    const width = Math.max(1, Math.floor(state.size.width * scale));
+    const height = Math.max(1, Math.floor(state.size.height * scale));
+    if (skyTarget.width !== width || skyTarget.height !== height) skyTarget.setSize(width, height);
+    gl.getDrawingBufferSize(compositeUniforms.outputResolution.value);
+    const previousTarget = gl.getRenderTarget();
+    try {
+      gl.setRenderTarget(skyTarget);
+      gl.render(skyScene, state.camera);
+    } finally {
+      gl.setRenderTarget(previousTarget);
+    }
   });
 
   return (
-    <mesh renderOrder={-100}>
-      <sphereGeometry args={[500, 48, 24]} />
-      <shaderMaterial key={fragmentShader} ref={materialRef} vertexShader={vertexShader} fragmentShader={fragmentShader}
-        uniforms={uniforms} side={BackSide} depthWrite={false} fog={false} toneMapped={false} />
-    </mesh>
+    <>
+      {createPortal(
+        <mesh>
+          <sphereGeometry args={[500, 48, 24]} />
+          <shaderMaterial key={fragmentShader} ref={materialRef} vertexShader={vertexShader} fragmentShader={fragmentShader}
+            uniforms={uniforms} side={BackSide} depthWrite={false} fog={false} toneMapped={false} />
+        </mesh>, skyScene,
+      )}
+      <mesh renderOrder={-100}>
+        <sphereGeometry args={[500, 48, 24]} />
+        <shaderMaterial key={compositeShader} ref={compositeRef} vertexShader={vertexShader} fragmentShader={compositeShader}
+          uniforms={compositeUniforms} side={BackSide} depthWrite={false} fog={false} toneMapped={false} />
+      </mesh>
+    </>
   );
 }
