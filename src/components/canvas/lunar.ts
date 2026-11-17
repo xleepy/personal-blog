@@ -7,7 +7,7 @@ export function getLunarVisuals(now: Date, latitude: number, longitude: number, 
   const { azimuth, altitude, distance } = getMoonPosition(now, latitude, longitude);
   const { fraction } = getMoonIllumination(now);
   const horizontal = Math.cos(altitude * RAD);
-  // SunCalc measures azimuth clockwise from north. The scene faces south.
+  // SunCalc measures azimuth clockwise from north. Scene axes are west, up, and north.
   const direction: [number, number, number] = [
     -Math.sin(azimuth * RAD) * horizontal,
     Math.sin(altitude * RAD),

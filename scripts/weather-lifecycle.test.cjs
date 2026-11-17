@@ -198,6 +198,7 @@ test('location request failure falls back to Prague; denied location fetches Pra
   assert.equal(fallback.state.source, 'prague');
   assert.equal(fallback.state.weather.latitude, 50.0755);
   assert.equal(fallback.state.weather.longitude, 14.4378);
+  assert.deepEqual({ ...fallback.state.location }, { latitude: 1, longitude: 2 });
   assert.equal(fallback.calls.length, 2);
   assert.match(fallback.calls[1].url, /latitude=50\.0755/);
   fallback.cleanup();
@@ -286,7 +287,7 @@ test('unmount aborts requests without state updates or fallback; pending geoloca
   assert.equal(location.calls.length, 0);
 });
 
-test('untouched location permission times out to Prague and ignores a late location callback', async () => {
+test('late location permission replaces Prague without waiting for the next refresh', async () => {
   const h = createHarness({ pendingLocation: true });
   await flush();
   assert.equal(h.state.status, 'loading');
@@ -299,11 +300,43 @@ test('untouched location permission times out to Prague and ignores a late locat
   assert.equal(h.calls.length, 1);
   assert.match(h.calls[0].url, /latitude=50\.0755/);
   assert.equal(h.timers.size, 0);
-  const previous = h.state;
   h.completeLocation();
   await flush();
+  assert.equal(h.calls.length, 2);
+  assert.match(h.calls[1].url, /latitude=1&longitude=2/);
+  assert.equal(h.state.source, 'location');
+  assert.deepEqual({ ...h.state.location }, { latitude: 1, longitude: 2 });
+  h.cleanup();
+});
+
+test('a late grant during the Prague fetch queues one local fetch', async () => {
+  let finishPrague;
+  const h = createHarness({ pendingLocation: true, fetcher: (url) => (
+    url.includes('latitude=50.0755') ? new Promise((resolve) => { finishPrague = resolve; }) : response()
+  ) });
+  h.timers.values().next().value();
+  await flush();
+  h.completeLocation();
+  await flush();
+  assert.equal(h.state.location.latitude, 1);
   assert.equal(h.calls.length, 1);
-  assert.equal(h.state, previous);
+  finishPrague(response());
+  await flush();
+  assert.equal(h.calls.length, 2);
+  assert.equal(h.state.source, 'location');
+  h.cleanup();
+});
+
+test('location timeout is retried on the next scheduled refresh', async () => {
+  const h = createHarness({ pendingLocation: true });
+  h.timers.values().next().value();
+  await flush();
+  h.advance(900000);
+  h.tick();
+  assert.equal(h.locationCalls, 2);
+  h.completeLocation();
+  await flush();
+  assert.equal(h.state.source, 'location');
   h.cleanup();
 });
 

@@ -1,34 +1,24 @@
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { AdditiveBlending, ShaderMaterial } from 'three';
 
 const nextInterval = () => 8 + Math.random() * 17;
 
 export function Lightning({ active }: { active: boolean }) {
-  // Start disabled until the browser preference is known.
-  const [reducedMotion, setReducedMotion] = useState(true);
   const material = useRef<ShaderMaterial>(null);
   const nextFlash = useRef(8);
   const flashTime = useRef(-1);
   const uniforms = useMemo(() => ({ pulse: { value: 0 } }), []);
 
   useEffect(() => {
-    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => setReducedMotion(preference.matches);
-    update();
-    preference.addEventListener('change', update);
-    return () => preference.removeEventListener('change', update);
-  }, []);
-
-  useEffect(() => {
     nextFlash.current = nextInterval();
     flashTime.current = -1;
     if (material.current) material.current.uniforms.pulse.value = 0;
-  }, [active, reducedMotion]);
+  }, [active]);
 
   useFrame((_, delta) => {
     if (!material.current) return;
-    if (!active || reducedMotion) {
+    if (!active) {
       material.current.uniforms.pulse.value = 0;
       return;
     }
@@ -54,15 +44,16 @@ export function Lightning({ active }: { active: boolean }) {
     }
   });
 
-  if (!active || reducedMotion) return null;
+  if (!active) return null;
 
   return (
-    <mesh position={[0, 20, -80]} renderOrder={-50}>
-      <planeGeometry args={[400, 250]} />
+    <mesh frustumCulled={false} renderOrder={-50}>
+      <planeGeometry args={[2, 2]} />
       <shaderMaterial
         ref={material}
         uniforms={uniforms}
         transparent
+        depthTest={false}
         depthWrite={false}
         fog={false}
         toneMapped={false}
@@ -71,7 +62,7 @@ export function Lightning({ active }: { active: boolean }) {
           varying vec2 vUv;
           void main() {
             vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            gl_Position = vec4(position.xy, 0.0, 1.0);
           }
         `}
         fragmentShader={`

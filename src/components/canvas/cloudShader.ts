@@ -132,11 +132,15 @@ export const CLOUD_SHADER = `
     return mix(sky, light, opacity);
   }
   vec3 lowerClouds(vec3 sky, vec3 dir, vec3 moonScatter, inout float celestialTransmission) {
-    if (lowCover < 0.005 || dir.y < 0.025) return sky;
+    if (lowCover < 0.005) return sky;
+    float entry = max(0.1, cloudBase() - 0.5) / max(dir.y, 0.001);
+    // A continuous opaque deck extends to the horizon beyond the ray-march budget.
+    float distantDeck = smoothstep(0.9, 1.0, lowCover) * smoothstep(0.2, 0.9, opticalDepth) * (1.0 - raggedness);
+    celestialTransmission *= 1.0 - distantDeck * smoothstep(46.0, 70.0, entry);
+    if (dir.y < 0.025) return sky;
     // Fractus is rendered as thin torn fragments, without extruding each shred
     // into an artificial vertical pillar or undersampling its tiny thickness.
     if (raggedness > 0.999) return fractusClouds(sky, dir, moonScatter, celestialTransmission);
-    float entry = max(0.1, cloudBase() - 0.5) / dir.y;
     float exitPoint = min((cloudBase() + layerDepth() + 0.5) / dir.y, 70.0);
     if (entry >= exitPoint) return sky;
     float stepLength = (exitPoint - entry) / marchSteps;

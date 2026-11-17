@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, useFrame, useThree } from '@react-three/fiber';
-import { BackSide, Color, HalfFloatType, Scene, ShaderMaterial, UnsignedByteType, Vector2, Vector3, WebGLRenderTarget } from 'three';
-import type { TimeVisuals } from './types';
+import {
+  BackSide, Color, HalfFloatType, Matrix3, Scene, ShaderMaterial, UnsignedByteType, Vector2, Vector3, WebGLRenderTarget,
+} from 'three';
 import type { Atmosphere } from './atmosphere';
-import type { LunarVisuals } from './lunar';
+import type { getSolarVisuals } from './solar';
 import { createCloudNoise } from './cloudNoise';
 import { CLOUD_SHADER } from './cloudShader';
 
@@ -20,6 +21,7 @@ const vertexShader = `
 const fragmentShader = `
   uniform vec3 topColor, horizonColor, sunDirection, sunColor, cloudColor;
   uniform vec3 moonDirection, moonLightDirection;
+  uniform mat3 starFrame;
   uniform vec2 cloudOffset;
   uniform float cover, haze, daylight, sunVisibility, celestialVisibility, storm;
   uniform float moonSinRadius, moonFraction;
@@ -35,7 +37,8 @@ const fragmentShader = `
 
   void main() {
     vec3 dir = normalize(vDirection);
-    float elevation = max(dir.y, 0.0);
+    // Soften the transition across the horizon when the camera frames a low Sun.
+    float elevation = 0.5 * (dir.y + sqrt(dir.y * dir.y + 0.0064));
     float gradient = pow(clamp(elevation, 0.0, 1.0), 0.45);
     vec3 sky = mix(horizonColor, topColor, gradient);
     float horizon = exp(-elevation * 7.0);
@@ -75,10 +78,15 @@ const fragmentShader = `
     }
 
     // Each star keeps its brightness. Brighter stars emerge earlier in twilight.
-    vec2 starUV = vec2(atan(dir.x, -dir.z), asin(clamp(dir.y, -1.0, 1.0))) * 240.0;
+    vec3 equatorial = starFrame * dir;
+    vec2 starUV = vec2(
+      mod((atan(equatorial.y, equatorial.x) / 6.2831853 + 0.5) * 1536.0, 1536.0),
+      asin(clamp(equatorial.z, -1.0, 1.0)) * 240.0
+    );
     vec2 cell = floor(starUV), local = fract(starUV) - 0.5;
     float seed = hash(cell);
-    float star = (1.0 - smoothstep(0.015, 0.12 + fwidth(starUV.x), length(local))) * step(0.996, seed);
+    float starFootprint = length(dFdx(equatorial)) * 240.0;
+    float star = (1.0 - smoothstep(0.015, min(0.45, 0.12 + starFootprint), length(local))) * step(0.996, seed);
     float brightness = clamp((seed - 0.996) / 0.004, 0.0, 1.0);
     float fadeStart = sin(radians(mix(12.0, 4.0, brightness)));
     float fadeEnd = sin(radians(mix(18.0, 10.0, brightness)));
@@ -93,8 +101,8 @@ const fragmentShader = `
     float moonContrast = mix(1.05, 0.40, daylight) * mix(0.4, 1.0, smoothstep(0.0, 0.22, moonDirection.y));
     sky += moonColor * moonDisc * moonSurfaceLight * moonContrast * smoothstep(0.002, 0.02, moonFraction)
       * celestialTransmission * celestialVisibility;
-    // Keep RGB linear and store direct-light transmission separately from cloud color.
-    float sunTransmission = celestialTransmission * (1.0 - haze * horizon * 0.48);
+    // Store direct-light transmission separately from the linear sky color.
+    float sunTransmission = celestialTransmission * celestialVisibility * (1.0 - haze * horizon * 0.48);
     gl_FragColor = vec4(max(sky, vec3(0.0)), sunTransmission);
   }
 `;
@@ -109,8 +117,7 @@ const compositeShader = `
   void main() {
     vec3 dir = normalize(vDirection);
     vec4 sky = texture2D(skyTexture, gl_FragCoord.xy / outputResolution);
-    // A tangent-plane distance stays well-conditioned at the centre of the disc.
-    // Its ~0.53 degree diameter is smoothed over one display pixel, not one cloud pixel.
+    // The tangent-plane distance smooths the disc over one display pixel.
     float sunDot = dot(dir, sunDirection);
     float radius = length(dir - sunDirection * sunDot);
     float edge = max(fwidth(radius), 0.000001);
@@ -122,22 +129,23 @@ const compositeShader = `
   }
 `;
 
-// Renders the sky at a bounded cloud cost, then adds a native-resolution solar disc.
-// Both passes share a camera and smoothed sun uniforms; cloud transmission occludes the disc.
-export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirection = 270 }: {
-  timeVisuals: TimeVisuals;
+export function SkyDome({ sky, visuals, reducedMotion, windSpeed = 0, windDirection = 270 }: {
+  sky: ReturnType<typeof getSolarVisuals>;
   visuals: Atmosphere;
-  moon: LunarVisuals;
+  reducedMotion: boolean;
   windSpeed?: number;
   windDirection?: number;
 }) {
+  const { timeVisuals, moon, stars, view } = sky;
   const gl = useThree((state) => state.gl);
   const materialRef = useRef<ShaderMaterial>(null);
   const compositeRef = useRef<ShaderMaterial>(null);
+  const cameraView = useRef({ ...view });
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => invalidate(), [sky, visuals, reducedMotion, invalidate]);
   const [noiseTexture] = useState(createCloudNoise);
   const [skyScene] = useState(() => new Scene());
   const [skyTarget] = useState(() => new WebGLRenderTarget(1, 1, {
-    // Preserve linear sky radiance where supported; WebGL2 also supports the byte fallback.
     type: gl.extensions.has('EXT_color_buffer_float') || gl.extensions.has('EXT_color_buffer_half_float')
       ? HalfFloatType : UnsignedByteType,
     depthBuffer: false,
@@ -155,7 +163,8 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
     direction: new Vector3(...timeVisuals.sunPosition).normalize(),
     moonDirection: new Vector3(...moon.direction),
     moonLightDirection: new Vector3(...moon.lightDirection).normalize(),
-  }), [timeVisuals, moon]);
+    starFrame: new Matrix3().set(...stars),
+  }), [timeVisuals, moon, stars]);
   const [uniforms] = useState(() => ({
     topColor: { value: targets.top.clone() }, horizonColor: { value: targets.horizon.clone() },
     sunColor: { value: targets.sun.clone() }, cloudColor: { value: targets.cloud.clone() },
@@ -163,6 +172,7 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
     moonDirection: { value: targets.moonDirection.clone() },
     moonLightDirection: { value: targets.moonLightDirection.clone() },
     moonSinRadius: { value: moon.sinRadius }, moonFraction: { value: moon.fraction },
+    starFrame: { value: targets.starFrame.clone() },
     cloudOffset: { value: new Vector2(3.2, 1.7) },
     cover: { value: visuals.cloudCover }, haze: { value: visuals.skyMute },
     daylight: { value: Math.max(0, Math.min(1, (targets.direction.y + 0.22) / 0.16)) }, sunVisibility: { value: visuals.sunVisibility },
@@ -187,21 +197,29 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
     const uniforms = materialRef.current?.uniforms;
     const composite = compositeRef.current?.uniforms;
     if (!uniforms || !composite) return;
-    const step = Math.min(delta, 0.05);
+    const alpha = reducedMotion ? 1 : 1 - Math.exp(-Math.max(delta, 0) * 3);
+    // Jump directly after a large clock or location change, including antipodal positions.
+    const sunAlpha = uniforms.sunDirection.value.dot(targets.direction) < 0.96 ? 1 : alpha;
+    const turn = view.yaw - cameraView.current.yaw;
+    cameraView.current.yaw += Math.atan2(Math.sin(turn), Math.cos(turn)) * sunAlpha;
+    cameraView.current.pitch += (view.pitch - cameraView.current.pitch) * sunAlpha;
+    state.camera.rotation.set(cameraView.current.pitch, cameraView.current.yaw, 0, 'YXZ');
+
+    const step = reducedMotion ? 0 : Math.min(delta, 0.05);
     // Weather/UI transitions follow elapsed time even in a throttled background tab.
     // Only physical advection uses the capped step, to avoid teleporting clouds on resume.
-    const alpha = 1 - Math.exp(-Math.max(delta, 0) * 3);
     uniforms.topColor.value.lerp(targets.top, alpha);
     uniforms.horizonColor.value.lerp(targets.horizon, alpha);
     uniforms.sunColor.value.lerp(targets.sun, alpha);
     uniforms.cloudColor.value.lerp(targets.cloud, alpha);
-    uniforms.sunDirection.value.lerp(targets.direction, alpha).normalize();
+    uniforms.sunDirection.value.lerp(targets.direction, sunAlpha).normalize();
     // Smooth clock ticks, and place the Moon immediately after a location or preview jump.
     const moonAlpha = uniforms.moonDirection.value.dot(targets.moonDirection) > 0.999 ? alpha : 1;
     uniforms.moonDirection.value.lerp(targets.moonDirection, moonAlpha).normalize();
     uniforms.moonLightDirection.value.lerp(targets.moonLightDirection, moonAlpha).normalize();
     uniforms.moonSinRadius.value += (moon.sinRadius - uniforms.moonSinRadius.value) * moonAlpha;
     uniforms.moonFraction.value += (moon.fraction - uniforms.moonFraction.value) * moonAlpha;
+    uniforms.starFrame.value.copy(targets.starFrame);
     const approach = (current: number, target: number) => current + (target - current) * alpha;
     uniforms.cover.value = approach(uniforms.cover.value, visuals.cloudCover);
     uniforms.lowCover.value = approach(uniforms.lowCover.value, visuals.lowCloudCover);
@@ -214,7 +232,7 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
     uniforms.marchSteps.value = state.size.width < 600 ? 22 : 36;
     uniforms.haze.value = approach(uniforms.haze.value, visuals.skyMute);
     uniforms.sunVisibility.value = approach(uniforms.sunVisibility.value, visuals.sunVisibility);
-    // R3F copies scalar uniform values per material; keep both passes in the same frame.
+    // R3F copies scalar uniforms for each material.
     composite.sunVisibility.value = uniforms.sunVisibility.value;
     uniforms.celestialVisibility.value = approach(uniforms.celestialVisibility.value, visuals.celestialVisibility);
     uniforms.storm.value = approach(uniforms.storm.value, visuals.rainIntensity / 1.55);
@@ -224,11 +242,11 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
     uniforms.cloudOffset.value.x -= Math.sin(angle) * speed * step;
     uniforms.cloudOffset.value.y += Math.cos(angle) * speed * step;
 
-    const scale = Math.min(1, Math.sqrt(SKY_PIXEL_BUDGET / Math.max(1, state.size.width * state.size.height)));
+    const scale = Math.min(1, Math.sqrt(SKY_PIXEL_BUDGET / (state.size.width * state.size.height)));
     const width = Math.max(1, Math.floor(state.size.width * scale));
     const height = Math.max(1, Math.floor(state.size.height * scale));
     if (skyTarget.width !== width || skyTarget.height !== height) skyTarget.setSize(width, height);
-    gl.getDrawingBufferSize(compositeUniforms.outputResolution.value);
+    gl.getDrawingBufferSize(composite.outputResolution.value);
     const previousTarget = gl.getRenderTarget();
     try {
       gl.setRenderTarget(skyTarget);
@@ -236,7 +254,7 @@ export function SkyDome({ timeVisuals, visuals, moon, windSpeed = 0, windDirecti
     } finally {
       gl.setRenderTarget(previousTarget);
     }
-  });
+  }, -1);
 
   return (
     <>

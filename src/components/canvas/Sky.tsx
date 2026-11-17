@@ -1,14 +1,6 @@
 import { SkyDome } from './SkyDome';
-import type { TimeVisuals } from './types';
-import type { Atmosphere } from './atmosphere';
-import type { LunarVisuals } from './lunar';
+import type { ComponentProps } from 'react';
 
-export function Sky(props: {
-  windSpeed?: number;
-  windDirection?: number;
-  visuals: Atmosphere;
-  timeVisuals: TimeVisuals;
-  moon: LunarVisuals;
-}) {
+export function Sky(props: ComponentProps<typeof SkyDome>) {
   return <SkyDome {...props} />;
 }

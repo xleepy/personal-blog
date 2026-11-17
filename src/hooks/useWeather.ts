@@ -21,16 +21,18 @@ export type WeatherData = {
 
 export type WeatherState = {
   weather: WeatherData | null;
+  location: { latitude: number; longitude: number } | null;
   status: 'loading' | 'ready' | 'refreshing' | 'stale' | 'unavailable';
   source: 'location' | 'prague' | null;
   updatedAt: number | null;
 };
 
-const PRAGUE = { lat: 50.0755, lon: 14.4378 };
+const PRAGUE = { latitude: 50.0755, longitude: 14.4378 };
 const REFRESH_INTERVAL = 15 * 60 * 1000;
 const REQUEST_TIMEOUT = 10000;
 const INITIAL_STATE: WeatherState = {
   weather: null,
+  location: null,
   status: 'loading',
   source: null,
   updatedAt: null,
@@ -91,7 +93,7 @@ async function fetchWeather(lat: number, lon: number, signal: AbortSignal): Prom
   }
 }
 
-function getPosition(signal: AbortSignal): Promise<GeolocationPosition> {
+function getPosition(signal: AbortSignal, onLatePosition: (position: GeolocationPosition) => void): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation not supported'));
@@ -102,6 +104,7 @@ function getPosition(signal: AbortSignal): Promise<GeolocationPosition> {
       return;
     }
     let settled = false;
+    let timedOut = false;
     const settle = (complete: () => void) => {
       if (settled) return;
       settled = true;
@@ -113,14 +116,17 @@ function getPosition(signal: AbortSignal): Promise<GeolocationPosition> {
       settle(() => reject(new DOMException('Location request cancelled', 'AbortError')));
     };
     // The native timeout can exclude time spent waiting for permission.
-    const timeout = window.setTimeout(
-      () => settle(() => reject(new Error('Location request timed out'))),
-      REQUEST_TIMEOUT,
-    );
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      settle(() => reject(new Error('Location request timed out')));
+    }, REQUEST_TIMEOUT);
     signal.addEventListener('abort', abort, { once: true });
     try {
       navigator.geolocation.getCurrentPosition(
-        (position) => settle(() => resolve(position)),
+        (position) => {
+          if (timedOut && !signal.aborted) onLatePosition(position);
+          else settle(() => resolve(position));
+        },
         (error) => settle(() => reject(error)),
         { timeout: REQUEST_TIMEOUT, maximumAge: REFRESH_INTERVAL },
       );
@@ -138,7 +144,6 @@ export function useWeatherState(): WeatherState {
     let loading = false;
     let controller: AbortController | null = null;
     let current = INITIAL_STATE;
-    let coordinates: { lat: number; lon: number; source: 'location' | 'prague' } | null = null;
 
     function publish(next: WeatherState) {
       if (cancelled) return;
@@ -151,34 +156,51 @@ export function useWeatherState(): WeatherState {
       loading = true;
       controller = new AbortController();
       const signal = controller.signal;
+      let forecastLocation = current.location;
       publish({ ...current, status: current.weather ? 'refreshing' : 'loading' });
 
+      function rememberPosition({ coords }: GeolocationPosition) {
+        if (cancelled || current.location) return false;
+        const { latitude, longitude } = coords;
+        publish({ ...current, location: { latitude, longitude } });
+        return true;
+      }
+
       try {
-        if (!coordinates) {
+        if (!current.location) {
           try {
-            const pos = await getPosition(signal);
-            coordinates = { lat: pos.coords.latitude, lon: pos.coords.longitude, source: 'location' };
+            const position = await getPosition(signal, (latePosition) => {
+              if (rememberPosition(latePosition) && !loading) void load();
+            });
+            rememberPosition(position);
           } catch {
             if (signal.aborted) return;
-            coordinates = { ...PRAGUE, source: 'prague' };
           }
         }
 
-        let source = coordinates.source;
+        forecastLocation = current.location;
+        const coordinates = forecastLocation ?? PRAGUE;
+        let source: WeatherState['source'] = forecastLocation ? 'location' : 'prague';
         let weather: WeatherData;
         try {
-          weather = await fetchWeather(coordinates.lat, coordinates.lon, signal);
+          weather = await fetchWeather(coordinates.latitude, coordinates.longitude, signal);
         } catch {
           if (signal.aborted) return;
           if (source === 'prague') throw new Error('Weather unavailable');
-          weather = await fetchWeather(PRAGUE.lat, PRAGUE.lon, signal);
+          weather = await fetchWeather(PRAGUE.latitude, PRAGUE.longitude, signal);
           source = 'prague';
         }
-        publish({ weather, status: 'ready', source, updatedAt: Date.now() });
+        // A late permission grant makes an in-flight Prague response obsolete.
+        if (forecastLocation === current.location) {
+          publish({ ...current, weather, status: 'ready', source, updatedAt: Date.now() });
+        }
       } catch {
-        if (!signal.aborted) publish({ ...current, status: current.weather ? 'stale' : 'unavailable' });
+        if (!signal.aborted && forecastLocation === current.location) {
+          publish({ ...current, status: current.weather ? 'stale' : 'unavailable' });
+        }
       } finally {
         loading = false;
+        if (!forecastLocation && current.location && !signal.aborted) void load();
       }
     }
 

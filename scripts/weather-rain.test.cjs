@@ -5,16 +5,17 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 const ts = require('typescript');
+const { Vector3 } = require('three');
 
 const source = ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../src/components/canvas/Rain.tsx'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } },
 ).outputText;
 
-function simulate(precipitation, intensity, windSpeed = 0, windDirection = 0) {
+function simulate(precipitation, intensity, windSpeed = 0, windDirection = 0, { yaw = 0, reducedMotion = false } = {}) {
   const refs = [];
   let frame;
-  const mesh = { setMatrixAt() {}, instanceMatrix: { needsUpdate: false } };
+  const mesh = { setMatrixAt() {}, position: new Vector3(), rotation: { y: 0 }, instanceMatrix: { needsUpdate: false } };
   const math = Object.create(Math);
   math.random = () => 0.5;
   const exportsObject = {};
@@ -34,10 +35,12 @@ function simulate(precipitation, intensity, windSpeed = 0, windDirection = 0) {
       return require(name);
     },
   });
-  exportsObject.Rain({ precipitation, intensity, windSpeed, windDirection });
+  exportsObject.Rain({ precipitation, intensity, windSpeed, windDirection, reducedMotion });
   return {
-    step: (time, delta) => frame({ clock: { elapsedTime: time } }, delta),
+    step: (time, delta) => frame({ clock: { elapsedTime: time }, camera: { rotation: { y: yaw } } }, delta),
     position: () => Array.from(refs[2].current.slice(0, 3)),
+    rotation: () => mesh.rotation.y,
+    center: () => mesh.position.toArray(),
     detach: () => { refs[0].current = null; },
   };
 }
@@ -94,6 +97,26 @@ test('intensity changes particle count without changing fall speed', () => {
     light.step(1, 0.05);
     heavy.step(1, 0.05);
     close(light.position(), heavy.position());
+  }
+});
+
+test('rain follows the camera heading while north wind still blows south', () => {
+  const turned = simulate('rain', 1, 50, 0, { yaw: Math.PI / 2 });
+  const initial = turned.position();
+  turned.step(0.05, 0.05);
+  assert.equal(turned.rotation(), Math.PI / 2);
+  close(turned.center(), [-5, 0, 0]);
+  assert.ok(turned.position()[0] > initial[0]);
+  assert.equal(turned.position()[2], initial[2]);
+});
+
+test('reduced motion freezes precipitation when the scene is redrawn', () => {
+  for (const kind of ['rain', 'snow']) {
+    const frozen = simulate(kind, 1, 50, 45, { reducedMotion: true });
+    const initial = frozen.position();
+    frozen.step(0.5, 0.5);
+    frozen.step(10, 9.5);
+    assert.deepEqual(frozen.position(), initial);
   }
 });
 

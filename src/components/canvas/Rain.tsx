@@ -7,13 +7,13 @@ export function Rain({
   precipitation,
   windSpeed = 0,
   windDirection = 0,
-  color,
+  reducedMotion = false,
 }: {
   intensity: number;
   precipitation: 'none' | 'rain' | 'snow';
   windSpeed?: number; // km/h
   windDirection?: number; // meteorological degrees (direction the wind comes from)
-  color?: string;
+  reducedMotion?: boolean;
 }) {
   const isSnow = precipitation === 'snow';
   const count = precipitation === 'none' ? 0 : Math.floor((isSnow ? 900 : 2000) * intensity);
@@ -21,6 +21,7 @@ export function Rain({
   const dummy = useRef(new Object3D());
   const positions = useRef<Float32Array | null>(null);
   const velocities = useRef<Float32Array | null>(null);
+  const elapsed = useRef(0);
 
   useEffect(() => {
     positions.current = new Float32Array(count * 3);
@@ -36,17 +37,24 @@ export function Rain({
   useFrame((state, delta) => {
     if (!meshRef.current || !positions.current || !velocities.current) return;
     // Preserve the original 60 fps speed, and avoid a large jump after a paused tab.
-    const step = Math.min(Math.max(delta, 0), 0.05);
+    const step = reducedMotion ? 0 : Math.min(Math.max(delta, 0), 0.05);
+    if (!reducedMotion) elapsed.current = state.clock.elapsedTime;
     const pos = positions.current;
     const vel = velocities.current;
     const wind = Number.isFinite(windSpeed) ? Math.min(Math.max(windSpeed, 0), 50) : 0;
     const direction = Number.isFinite(windDirection) ? windDirection : 0;
-    const drift = Math.sin(direction * Math.PI / 180) * wind * 0.05;
-    const driftZ = -Math.cos(direction * Math.PI / 180) * wind * 0.05;
+    // Keep the particle volume ahead of the camera and convert world wind to its local axes.
+    const yaw = state.camera.rotation.y;
+    meshRef.current.rotation.y = yaw;
+    // Preserve the foreground clearance from before the sky camera moved to the origin.
+    meshRef.current.position.set(-5 * Math.sin(yaw), 0, -5 * Math.cos(yaw));
+    const angle = direction * Math.PI / 180 + yaw;
+    const drift = Math.sin(angle) * wind * 0.05;
+    const driftZ = -Math.cos(angle) * wind * 0.05;
+    const swayStart = elapsed.current - step;
     for (let i = 0; i < count; i++) {
       const fallSpeed = vel[i] * 60 * (isSnow ? 1.3 : 4);
       pos[i * 3 + 1] -= fallSpeed * step;
-      const swayStart = state.clock.elapsedTime - step;
       pos[i * 3] += drift * step;
       pos[i * 3 + 2] += driftZ * step;
       if (pos[i * 3 + 1] < -10) {
@@ -57,14 +65,14 @@ export function Rain({
       if (isSnow) {
         // Integrate sway exactly across frames and volume crossings.
         pos[i * 3] += 0.36 / 0.8 * (
-          Math.cos(swayStart * 0.8 + i) - Math.cos(state.clock.elapsedTime * 0.8 + i)
+          Math.cos(swayStart * 0.8 + i) - Math.cos(elapsed.current * 0.8 + i)
         );
       }
       // Wrap horizontal movement without losing distance at the edge.
       pos[i * 3] = ((pos[i * 3] + 25) % 50 + 50) % 50 - 25;
       pos[i * 3 + 2] = ((pos[i * 3 + 2] + 22) % 20 + 20) % 20 - 22;
       dummy.current.position.set(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
-      dummy.current.rotation.z = isSnow ? state.clock.elapsedTime * 0.2 + i : Math.atan2(drift, fallSpeed);
+      dummy.current.rotation.z = isSnow ? elapsed.current * 0.2 + i : Math.atan2(drift, fallSpeed);
       dummy.current.updateMatrix();
       meshRef.current.setMatrixAt(i, dummy.current.matrix);
     }
@@ -76,7 +84,7 @@ export function Rain({
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
       {isSnow ? <circleGeometry args={[0.045, 8]} /> : <planeGeometry args={[0.025, 0.8]} />}
-      <meshBasicMaterial color={color ?? (isSnow ? '#f5fbff' : '#b6c4cf')} transparent depthWrite={false} opacity={isSnow ? 0.75 : 0.38} side={2} />
+      <meshBasicMaterial color={isSnow ? '#d9e7f7' : '#b6c4cf'} transparent depthWrite={false} opacity={isSnow ? 0.62 : 0.38} side={2} />
     </instancedMesh>
   );
 }

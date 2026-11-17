@@ -1,6 +1,7 @@
 import type { TimeOfDay, TimeVisuals } from './types';
 import { blendTimeVisuals } from './utils';
 import { getLunarVisuals } from './lunar';
+import { getSkyView, getStarFrame } from './celestial';
 
 const RAD = Math.PI / 180;
 
@@ -26,7 +27,7 @@ export function getSolarPosition(now: Date, latitude: number, longitude: number)
   const north = Math.cos(lat) * Math.sin(declination) - Math.sin(lat) * Math.cos(declination) * Math.cos(hourAngle);
   return {
     elevation: Math.asin(Math.max(-1, Math.min(1, up))) / RAD,
-    // The fixed view faces south: east is on the left, north is behind the camera.
+    // Scene axes are west, up, and north.
     direction: [-east, up, north] as [number, number, number],
     morning: hourAngle < 0,
     solarHour: solarMinutes / 60,
@@ -70,5 +71,7 @@ export function getSolarVisuals(now: Date, latitude = 50.0755, longitude = 14.43
     period,
     timeVisuals: { ...timeVisuals, sunPosition: solar.direction },
     moon: getLunarVisuals(now, latitude, longitude, solar.direction),
+    stars: getStarFrame(now, latitude, longitude),
+    view: getSkyView(solar.direction, latitude),
   };
 }

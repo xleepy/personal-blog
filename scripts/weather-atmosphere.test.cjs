@@ -5,6 +5,7 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 const ts = require('typescript');
+const { Matrix3, PerspectiveCamera, Vector3 } = require('three');
 
 function load(name) {
   const filename = path.join(__dirname, '../src/components/canvas', `${name}.ts`);
@@ -18,8 +19,48 @@ function load(name) {
 
 const { getSolarPosition, getSolarVisuals } = load('solar');
 const { getAtmosphere } = load('atmosphere');
+const { getStarFrame } = load('celestial');
+const { getDebugTime, DEFAULT_DEBUG_SETTINGS } = load('debug');
 const prague = [50.0755, 14.4378];
 const at = (date, coords = prague) => getSolarPosition(new Date(date), ...coords);
+
+test('the Sun stays in frame at both horizons and high noon in portrait and landscape', () => {
+  const scenes = [
+    getDebugTime({ ...DEFAULT_DEBUG_SETTINGS, time: 'sunrise' }),
+    getDebugTime({ ...DEFAULT_DEBUG_SETTINGS, time: 'sunset' }),
+    getSolarVisuals(new Date('2026-06-21T11:00:00Z'), ...prague),
+    getSolarVisuals(new Date('2026-06-21T02:00:00Z'), -33.87, 151.21),
+    getSolarVisuals(new Date('2026-03-20T12:07:00Z'), 0, 0),
+  ];
+  for (const aspect of [16 / 9, 390 / 844]) {
+    const camera = new PerspectiveCamera(60, aspect);
+    const projected = scenes.map(({ view, direction }) => {
+      camera.rotation.set(view.pitch, view.yaw, 0, 'YXZ');
+      camera.updateMatrixWorld();
+      const sun = new Vector3(...direction).multiplyScalar(500).project(camera);
+      assert.ok(Math.abs(sun.x) < 0.9 && Math.abs(sun.y) < 0.9 && Math.abs(sun.z) < 1, sun.toArray());
+      return sun;
+    });
+    assert.ok(projected[0].x < 0 && projected[1].x > 0);
+  }
+});
+
+test('stars turn once per sidereal day about the local celestial pole', () => {
+  const siderealDay = 86_164_090;
+  const epoch = Date.UTC(2000, 0, 1, 12);
+  for (const latitude of [0, 50, -34]) {
+    const matrix = (offset, longitude = 0) => new Matrix3().set(...getStarFrame(new Date(epoch + offset), latitude, longitude));
+    const radians = latitude * Math.PI / 180;
+    const pole = new Vector3(0, Math.sin(radians), Math.cos(radians));
+    const equator = new Vector3(0, Math.cos(radians), -Math.sin(radians));
+    const start = equator.clone().applyMatrix3(matrix(0));
+    const quarterTurn = matrix(siderealDay / 4);
+    assert.ok(pole.clone().applyMatrix3(quarterTurn).distanceTo(new Vector3(0, 0, 1)) < 1e-6);
+    assert.ok(Math.abs(start.dot(equator.clone().applyMatrix3(quarterTurn))) < 1e-6);
+    assert.ok(start.distanceTo(equator.clone().applyMatrix3(matrix(siderealDay))) < 1e-6);
+    assert.ok(equator.clone().applyMatrix3(quarterTurn).distanceTo(equator.clone().applyMatrix3(matrix(0, 90))) < 1e-6);
+  }
+});
 
 // Solar noon elevation is approximately 90 - latitude + declination, with
 // declination approximately 0 at the equinox and +/-23.44 degrees at solstices.

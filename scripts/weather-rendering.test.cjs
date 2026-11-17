@@ -44,13 +44,13 @@ test('solar composite follows clear → fog → clear with independent R3F scala
       useEffect: (effect) => { if (!mounted) cleanups.push(effect()); },
     },
     '@react-three/fiber': {
-      useThree: (select) => select({ gl }),
+      useThree: (select) => select({ gl, invalidate: () => {} }),
       useFrame: (callback) => { frame = callback; },
       createPortal: (children) => children,
     },
   });
   const { getAtmosphere } = load('atmosphere.ts');
-  const { timeVisuals, moon } = load('solar.ts').getSolarVisuals(new Date('2026-03-20T11:00:00Z'));
+  const sky = load('solar.ts').getSolarVisuals(new Date('2026-03-20T11:00:00Z'));
   const state = { size: { width: 1512, height: 753 }, camera: new THREE.PerspectiveCamera() };
   const mountMaterials = (node) => {
     if (!node || typeof node !== 'object') return;
@@ -66,7 +66,7 @@ test('solar composite follows clear → fog → clear with independent R3F scala
   const render = (condition) => {
     cursor = 0;
     const visuals = getAtmosphere({ condition, cloudCover: condition === 'fog' ? 100 : 0 });
-    const tree = SkyDome({ timeVisuals, moon, visuals });
+    const tree = SkyDome({ sky, visuals, reducedMotion: false });
     if (!mounted) mountMaterials(tree);
     mounted = true;
     return visuals;
