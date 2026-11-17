@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useDraggableWindow } from "@/hooks/useDraggableWindow";
+import Win98WindowShell from "@/components/Win98WindowShell";
 
 const BOARD_SIZE = 8;
 const MINE_COUNT = 10;
@@ -45,8 +45,6 @@ export default function Minesweeper({ onClose }: MinesweeperProps) {
   const [flagged, setFlagged] = useState<Set<number>>(() => new Set());
   const [status, setStatus] = useState<GameStatus>("playing");
   const [seconds, setSeconds] = useState(0);
-  const { windowRef, windowStyle, titlebarProps, resizeHandleProps } =
-    useDraggableWindow({ minWidth: 244, minHeight: 345 });
 
   useEffect(() => {
     if (status !== "playing") return;
@@ -105,16 +103,16 @@ export default function Minesweeper({ onClose }: MinesweeperProps) {
   const face = status === "won" ? "😎" : status === "lost" ? "😵" : "🙂";
 
   return (
-    <section ref={windowRef} style={windowStyle} className="win98-window win98-app-window win98-minesweeper-window" role="dialog" aria-label="Minesweeper">
-      <div {...titlebarProps}>
-        <div className="win98-titlebar-label">
-          <span aria-hidden="true" className="win98-mine-title-icon">✹</span>
-          Minesweeper
-        </div>
-        <div className="win98-titlebar-actions">
-          <button className="win98-caption-button" type="button" aria-label="Close Minesweeper" onClick={onClose}>×</button>
-        </div>
-      </div>
+    <Win98WindowShell
+      windowId="minesweeper"
+      title="Minesweeper"
+      label="Minesweeper"
+      titleIcon={<span aria-hidden="true" className="win98-mine-title-icon">✹</span>}
+      className="win98-app-window win98-minesweeper-window"
+      minWidth={244}
+      minHeight={345}
+      closeAction={{ onClick: onClose }}
+    >
       <div className="win98-menu-bar"><span><u>G</u>ame</span><span><u>H</u>elp</span></div>
       <div className="minesweeper-game">
         <div className="minesweeper-scoreboard">
@@ -146,7 +144,6 @@ export default function Minesweeper({ onClose }: MinesweeperProps) {
         </div>
         <p className="minesweeper-help">Left-click to reveal · Right-click to flag</p>
       </div>
-      <div {...resizeHandleProps} />
-    </section>
+    </Win98WindowShell>
   );
 }

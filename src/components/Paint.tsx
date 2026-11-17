@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useDraggableWindow } from "@/hooks/useDraggableWindow";
+import Win98WindowShell from "@/components/Win98WindowShell";
 
 const COLORS = [
   "#000000", "#808080", "#800000", "#808000", "#008000", "#008080", "#000080", "#800080",
@@ -18,8 +18,6 @@ export default function Paint({ onClose }: PaintProps) {
   const lastPointRef = useRef({ x: 0, y: 0 });
   const [color, setColor] = useState("#000000");
   const [brushSize, setBrushSize] = useState(4);
-  const { windowRef, windowStyle, titlebarProps, resizeHandleProps } =
-    useDraggableWindow({ minWidth: 480, minHeight: 360 });
 
   const getPoint = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -67,13 +65,16 @@ export default function Paint({ onClose }: PaintProps) {
   };
 
   return (
-    <section ref={windowRef} style={windowStyle} className="win98-window win98-app-window win98-paint-window" role="dialog" aria-label="Paint">
-      <div {...titlebarProps}>
-        <div className="win98-titlebar-label"><span aria-hidden="true">🎨</span>untitled - Paint</div>
-        <div className="win98-titlebar-actions">
-          <button className="win98-caption-button" type="button" aria-label="Close Paint" onClick={onClose}>×</button>
-        </div>
-      </div>
+    <Win98WindowShell
+      windowId="paint"
+      title="untitled - Paint"
+      label="Paint"
+      titleIcon={<span aria-hidden="true">🎨</span>}
+      className="win98-app-window win98-paint-window"
+      minWidth={480}
+      minHeight={360}
+      closeAction={{ onClick: onClose }}
+    >
       <div className="win98-menu-bar"><span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>V</u>iew</span><span><u>I</u>mage</span><span><u>O</u>ptions</span><span><u>H</u>elp</span></div>
       <div className="paint-workspace">
         <aside className="paint-tools" aria-label="Paint tools">
@@ -122,7 +123,6 @@ export default function Paint({ onClose }: PaintProps) {
           ))}
         </div>
       </div>
-      <div {...resizeHandleProps} />
-    </section>
+    </Win98WindowShell>
   );
 }

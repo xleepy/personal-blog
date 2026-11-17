@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import Win98WindowShell from "@/components/Win98WindowShell";
 
 type Win98WindowProps = {
   title: string;
+  label: string;
   children: ReactNode;
   className?: string;
   contentClassName?: string;
@@ -14,6 +14,7 @@ type Win98WindowProps = {
 
 export default function Win98Window({
   title,
+  label,
   children,
   className = "",
   contentClassName = "",
@@ -21,21 +22,14 @@ export default function Win98Window({
 }: Win98WindowProps) {
   return (
     <Win98WindowShell
+      windowId="page"
       title={title}
-      className={`win98-resizable-window ${className}`}
+      label={label}
+      className={`win98-page-window ${className}`}
       minWidth={320}
       minHeight={220}
       initialHeight={initialHeight}
-      captionActionsAriaHidden
-      captionActions={
-        <>
-          <span className="win98-caption-button">_</span>
-          <span className="win98-caption-button">□</span>
-          <Link href="/" className="win98-caption-button" tabIndex={-1}>
-            ×
-          </Link>
-        </>
-      }
+      closeAction={{ href: "/" }}
     >
       <div className="win98-menu-bar" aria-label="Window menu">
         <span><u>F</u>ile</span>

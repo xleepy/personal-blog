@@ -31,8 +31,6 @@ type DragState = {
   };
 };
 
-let topWindowZIndex = 100;
-
 export function useDraggableWindow({
   minWidth = 280,
   minHeight = 180,
@@ -43,14 +41,8 @@ export function useDraggableWindow({
   const listenerCleanupRef = useRef<(() => void) | null>(null);
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
   const [size, setSize] = useState<Size>();
-  const [zIndex, setZIndex] = useState<number>();
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-
-  const bringToFront = () => {
-    topWindowZIndex += 1;
-    setZIndex(topWindowZIndex);
-  };
 
   useEffect(() => () => listenerCleanupRef.current?.(), []);
 
@@ -77,7 +69,6 @@ export function useDraggableWindow({
     };
 
     event.preventDefault();
-    bringToFront();
     setIsDragging(true);
 
     const onWindowPointerMove = (pointerEvent: PointerEvent) => {
@@ -131,7 +122,6 @@ export function useDraggableWindow({
 
     event.preventDefault();
     event.stopPropagation();
-    bringToFront();
     setIsResizing(true);
 
     const onWindowPointerMove = (pointerEvent: PointerEvent) => {
@@ -168,7 +158,6 @@ export function useDraggableWindow({
 
   const windowStyle: CSSProperties = {
     translate: `${position.x}px ${position.y}px`,
-    zIndex,
     ...(!size && initialHeight ? { height: initialHeight } : {}),
     ...(size
       ? {

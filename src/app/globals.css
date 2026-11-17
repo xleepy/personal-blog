@@ -102,7 +102,7 @@ a {
 
 .win98-button:active,
 .win98-taskbar-button:active,
-.win98-taskbar-button[aria-current="page"] {
+.win98-taskbar-button[aria-pressed="true"] {
   box-shadow:
     inset 1px 1px var(--win98-dark),
     inset -1px -1px var(--win98-light),
@@ -137,15 +137,18 @@ a {
 
 /* Desktop shortcuts */
 .win98-desktop-area {
+  --window-top: clamp(36px, 8dvh, 84px);
+  --window-left-gutter: 132px;
+  --window-right-gutter: 18px;
+  height: calc(100dvh - 44px);
   position: relative;
-  min-height: calc(100dvh - 44px);
-  padding: 18px;
-  overflow: hidden;
+  z-index: 10;
 }
 
 .win98-desktop-icons {
-  position: relative;
-  z-index: 2;
+  position: absolute;
+  top: 18px;
+  left: 18px;
   display: flex;
   width: 96px;
   flex-direction: column;
@@ -176,8 +179,7 @@ a {
   line-height: 1.15;
 }
 
-.win98-desktop-shortcut:hover .win98-shortcut-label,
-.win98-desktop-shortcut.is-selected .win98-shortcut-label {
+.win98-desktop-shortcut:hover .win98-shortcut-label {
   background: var(--win98-blue);
   outline: 1px dotted #fff;
 }
@@ -275,18 +277,6 @@ a {
   height: 5px;
 }
 
-.win98-desktop-hint {
-  position: absolute;
-  right: 24px;
-  bottom: 28px;
-  max-width: min(300px, calc(100vw - 36px));
-  padding: 8px 10px;
-  color: #000;
-  background: #ffffe1;
-  border: 1px solid #000;
-  box-shadow: 2px 2px 0 rgb(0 0 0 / 0.35);
-}
-
 /* Window chrome */
 .win98-window {
   position: relative;
@@ -338,6 +328,10 @@ a {
 
 .win98-titlebar.is-dragging {
   cursor: grabbing;
+}
+
+.win98-window[data-active="false"] > .win98-titlebar {
+  background: linear-gradient(90deg, #797979, #a9a9a9);
 }
 
 .win98-titlebar-label {
@@ -502,16 +496,22 @@ a {
   border: 1px solid #5c4500;
 }
 
-.win98-explorer-window {
+.win98-explorer-window,
+.win98-page-window {
   position: absolute;
-  z-index: 10;
-  top: clamp(42px, 8vh, 84px);
-  left: 50%;
+  top: var(--window-top);
+  left: max(var(--window-left-gutter), calc(
+    (100% + var(--window-left-gutter) - var(--window-right-gutter) - var(--window-width)) / 2
+  ));
   display: flex;
-  width: min(920px, calc(100% - 150px));
-  height: min(610px, calc(100dvh - 126px));
-  transform: translateX(-50%);
+  width: min(var(--window-width), calc(100% - var(--window-left-gutter) - var(--window-right-gutter)));
+  max-height: calc(100% - var(--window-top) - 8px);
   flex-direction: column;
+}
+
+.win98-explorer-window {
+  --window-width: 920px;
+  height: 610px;
 }
 
 .win98-explorer-content {
@@ -677,6 +677,24 @@ a {
   box-shadow: 0 -1px var(--win98-highlight);
 }
 
+.win98-taskbar-navigation,
+.win98-taskbar-windows {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.win98-taskbar-navigation {
+  padding-right: 178px;
+}
+
+.win98-taskbar-windows {
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
 .win98-taskbar-button {
   display: inline-flex;
   height: 34px;
@@ -699,6 +717,7 @@ a {
 }
 
 .win98-start-button {
+  flex: none;
   min-width: 76px;
   padding-inline: 6px 9px;
   font-weight: bold;
@@ -719,32 +738,12 @@ a {
 .win98-logo i:nth-child(4) { background: #f2d339; }
 
 .win98-taskbar-divider {
+  flex: none;
   width: 3px;
   height: 32px;
   margin: 0 2px;
   border-left: 1px solid var(--win98-shadow);
   border-right: 1px solid var(--win98-light);
-}
-
-.win98-taskbar-folder {
-  position: relative;
-  width: 18px;
-  height: 13px;
-  flex: none;
-  background: #f0cc42;
-  border: 1px solid #5c4500;
-}
-
-.win98-taskbar-folder::before {
-  position: absolute;
-  top: -4px;
-  left: 1px;
-  width: 8px;
-  height: 4px;
-  background: #f0cc42;
-  border: 1px solid #5c4500;
-  border-bottom: 0;
-  content: "";
 }
 
 .win98-warning-button {
@@ -935,14 +934,15 @@ a {
 }
 
 .win98-running-button {
+  min-width: 0;
   max-width: 145px;
+  flex: 0 1 auto;
   font-weight: bold;
 }
 
 /* Desktop applications */
 .win98-app-window {
   position: fixed;
-  z-index: 55;
   max-height: calc(100dvh - 58px);
   box-shadow:
     inset 1px 1px var(--win98-light),
@@ -953,13 +953,11 @@ a {
 }
 
 .win98-minesweeper-window,
-.win98-paint-window,
-.win98-resizable-window {
+.win98-paint-window {
   flex-direction: column;
 }
 
-.win98-minesweeper-window,
-.win98-resizable-window {
+.win98-minesweeper-window {
   display: flex;
   min-width: 0;
   min-height: 0;
@@ -1225,12 +1223,12 @@ a {
 }
 
 /* Regular pages and document content */
-.win98-page-window-wrap {
-  display: flex;
-  min-height: calc(100dvh - 44px);
-  align-items: flex-start;
-  justify-content: center;
-  padding: 36px 16px 70px;
+.win98-page-window {
+  --window-width: 48rem;
+}
+
+.win98-document-window {
+  --window-width: 64rem;
 }
 
 .win98-window-content {
@@ -1311,25 +1309,22 @@ a {
 
 @media (max-width: 700px) {
   .win98-desktop-area {
-    padding: 12px 8px;
+    --window-top: 90px;
+    --window-left-gutter: 6px;
+    --window-right-gutter: 6px;
   }
 
   .win98-desktop-icons {
-    width: 84px;
+    top: 8px;
+    left: 8px;
+    width: auto;
+    flex-direction: row;
     gap: 8px;
   }
 
   .win98-desktop-shortcut {
     width: 84px;
     min-height: 74px;
-  }
-
-  .win98-explorer-window {
-    top: 88px;
-    left: 6px;
-    width: calc(100% - 12px);
-    height: calc(100dvh - 140px);
-    transform: none;
   }
 
   .win98-explorer-sidebar {
@@ -1352,17 +1347,16 @@ a {
     gap: 12px;
   }
 
-  .win98-desktop-hint {
-    right: 12px;
-    bottom: 20px;
-  }
-
   .win98-weather-tray {
     width: 102px;
   }
 
   .win98-running-button {
-    display: none;
+    min-width: 72px;
+  }
+
+  .win98-taskbar-navigation {
+    padding-right: 106px;
   }
 
   .win98-start-menu {
@@ -1392,12 +1386,8 @@ a {
   }
 
   .win98-clock,
-  .win98-about-taskbar-button {
+  .win98-location-notice {
     display: none;
-  }
-
-  .win98-taskbar-button {
-    min-width: 70px;
   }
 
   .win98-about-card {

@@ -26,18 +26,17 @@ export default async function Page({ params }: Props) {
   const Component = ComponentsMap[postSlug];
   const metadata = await getPostMetadata(`${postSlug}.mdx`);
   return (
-    <div className="win98-page-window-wrap">
-      <Win98Window
-        title={`${metadata.title} - WordPad`}
-        className="w-full max-w-5xl"
-        contentClassName="win98-document"
-        initialHeight="min(70dvh, 720px)"
-      >
-        <Suspense fallback={"Loading..."}>
-          <Component />
-        </Suspense>
-      </Win98Window>
-    </div>
+    <Win98Window
+      title={`${metadata.title} - WordPad`}
+      label={metadata.title}
+      className="win98-document-window"
+      contentClassName="win98-document"
+      initialHeight="min(70dvh, 720px)"
+    >
+      <Suspense fallback={"Loading..."}>
+        <Component />
+      </Suspense>
+    </Win98Window>
   );
 }
 
