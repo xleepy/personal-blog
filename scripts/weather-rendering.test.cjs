@@ -19,7 +19,7 @@ function load(name, overrides = {}) {
   return exports;
 }
 
-test('solar composite follows clear → fog → clear with independent R3F scalar uniforms', () => {
+function createSkySimulation(t) {
   let frame, cursor = 0, mounted = false;
   const slots = [], materials = [], cleanups = [], draws = [];
   const slot = (initialize) => {
@@ -28,6 +28,11 @@ test('solar composite follows clear → fog → clear with independent R3F scala
     return slots[index];
   };
   const previousTarget = new THREE.WebGLRenderTarget();
+  t.after(() => {
+    for (const cleanup of cleanups) cleanup?.();
+    for (const material of materials) material.dispose();
+    previousTarget.dispose();
+  });
   let boundTarget = previousTarget;
   const gl = {
     extensions: { has: () => true },
@@ -63,39 +68,65 @@ test('solar composite follows clear → fog → clear with independent R3F scala
     }
     for (const child of [].concat(node.props?.children ?? [])) mountMaterials(child);
   };
-  const render = (condition) => {
+  const render = (condition, options = {}) => {
     cursor = 0;
     const visuals = getAtmosphere({ condition, cloudCover: condition === 'fog' ? 100 : 0 });
-    const tree = SkyDome({ sky, visuals, reducedMotion: false });
+    const tree = SkyDome({ sky, visuals, reducedMotion: false, ...options });
     if (!mounted) mountMaterials(tree);
     mounted = true;
     return visuals;
   };
 
-  try {
-    render('clear');
-    const cloud = materials.find((material) => material.uniforms.cloudNoise);
-    const composite = materials.find((material) => material.uniforms.skyTexture);
-    assert.notEqual(cloud.uniforms.sunVisibility, composite.uniforms.sunVisibility);
-    for (const condition of ['clear', 'fog', 'clear']) {
-      const visuals = render(condition);
-      for (let tick = 0; tick < 120; tick++) {
-        frame(state, 1 / 24);
-        assert.equal(composite.uniforms.sunVisibility.value, cloud.uniforms.sunVisibility.value,
-          `${condition}: solar disc and cloud lighting disagree`);
-      }
-      assert.ok(Math.abs(composite.uniforms.sunVisibility.value - visuals.sunVisibility) < 0.000001);
-      assert.equal(boundTarget, previousTarget, 'offscreen rendering must restore the caller target');
+  return { render, materials, state, draws, previousTarget, gl, step: (delta) => frame(state, delta) };
+}
+
+test('solar composite follows clear → fog → clear with independent R3F scalar uniforms', (t) => {
+  const { render, materials, state, draws, previousTarget, gl, step } = createSkySimulation(t);
+  render('clear');
+  const cloud = materials.find((material) => material.uniforms.cloudNoise);
+  const composite = materials.find((material) => material.uniforms.skyTexture);
+  assert.notEqual(cloud.uniforms.sunVisibility, composite.uniforms.sunVisibility);
+  for (const condition of ['clear', 'fog', 'clear']) {
+    const visuals = render(condition);
+    for (let tick = 0; tick < 120; tick++) {
+      step(1 / 24);
+      assert.equal(composite.uniforms.sunVisibility.value, cloud.uniforms.sunVisibility.value,
+        `${condition}: solar disc and cloud lighting disagree`);
     }
-    assert.equal(draws.length, 360);
-    assert.equal(draws.at(-1).camera, state.camera);
-    const target = draws.at(-1).target;
-    assert.ok(target.width * target.height <= 640 * 360, 'cloud work must retain its pixel budget');
-    assert.equal(composite.uniforms.skyTexture.value, target.texture);
-    assert.deepEqual(composite.uniforms.outputResolution.value.toArray(), [3024, 1506]);
-  } finally {
-    for (const cleanup of cleanups) cleanup?.();
-    for (const material of materials) material.dispose();
-    previousTarget.dispose();
+    assert.ok(Math.abs(composite.uniforms.sunVisibility.value - visuals.sunVisibility) < 0.000001);
+    assert.equal(gl.getRenderTarget(), previousTarget, 'offscreen rendering must restore the caller target');
   }
+  assert.equal(draws.length, 360);
+  assert.equal(draws.at(-1).camera, state.camera);
+  const target = draws.at(-1).target;
+  assert.ok(target.width * target.height <= 640 * 360, 'cloud work must retain its pixel budget');
+  assert.equal(composite.uniforms.skyTexture.value, target.texture);
+  assert.deepEqual(composite.uniforms.outputResolution.value.toArray(), [3024, 1506]);
+});
+
+test('strong wind produces the same cloud drift rate at 24 and 12 fps', (t) => {
+  const { render, materials, step } = createSkySimulation(t);
+  render('overcast', { windSpeed: 40, windDirection: 270 });
+  const { value: offset } = materials.find((material) => material.uniforms.cloudOffset).uniforms.cloudOffset;
+  const advanceOneSecond = (fps) => {
+    const start = offset.x;
+    for (let tick = 0; tick < fps; tick++) step(1 / fps);
+    return offset.x - start;
+  };
+
+  const initialY = offset.y;
+  const drift = advanceOneSecond(24);
+  assert.ok(drift >= 0.12, 'westerly wind should shift the cloud pattern east at a perceptible rate');
+  assert.equal(offset.y, initialY);
+  assert.ok(Math.abs(advanceOneSecond(12) - drift) < 1e-9);
+
+  const beforePause = offset.x;
+  step(60);
+  assert.ok(Math.abs(offset.x - beforePause - drift / 10) < 1e-9);
+
+  render('overcast', { windSpeed: 40, reducedMotion: true });
+  assert.equal(advanceOneSecond(24), 0, 'reduced motion should stop cloud movement even in strong wind');
+
+  render('overcast', { windSpeed: 0 });
+  assert.equal(advanceOneSecond(24), 0);
 });

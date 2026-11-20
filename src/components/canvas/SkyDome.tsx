@@ -9,6 +9,8 @@ import { createCloudNoise } from './cloudNoise';
 import { CLOUD_SHADER } from './cloudShader';
 
 const SKY_PIXEL_BUDGET = 640 * 360;
+// Shader offset per second per km/h of forecast wind, tuned for visible cloud drift.
+const CLOUD_DRIFT_PER_KMH = 0.0036;
 
 const vertexShader = `
   varying vec3 vDirection;
@@ -205,9 +207,6 @@ export function SkyDome({ sky, visuals, reducedMotion, windSpeed = 0, windDirect
     cameraView.current.pitch += (view.pitch - cameraView.current.pitch) * sunAlpha;
     state.camera.rotation.set(cameraView.current.pitch, cameraView.current.yaw, 0, 'YXZ');
 
-    const step = reducedMotion ? 0 : Math.min(delta, 0.05);
-    // Weather/UI transitions follow elapsed time even in a throttled background tab.
-    // Only physical advection uses the capped step, to avoid teleporting clouds on resume.
     uniforms.topColor.value.lerp(targets.top, alpha);
     uniforms.horizonColor.value.lerp(targets.horizon, alpha);
     uniforms.sunColor.value.lerp(targets.sun, alpha);
@@ -237,7 +236,9 @@ export function SkyDome({ sky, visuals, reducedMotion, windSpeed = 0, windDirect
     uniforms.celestialVisibility.value = approach(uniforms.celestialVisibility.value, visuals.celestialVisibility);
     uniforms.storm.value = approach(uniforms.storm.value, visuals.rainIntensity / 1.55);
     uniforms.daylight.value = approach(uniforms.daylight.value, Math.max(0, Math.min(1, (targets.direction.y + 0.22) / 0.16)));
-    const speed = Math.max(0, Math.min(windSpeed, 100)) * 0.00045;
+    // Preserve real-time drift down to 10 fps while capping jumps on tab resume.
+    const step = reducedMotion ? 0 : Math.min(delta, 0.1);
+    const speed = Math.max(0, Math.min(windSpeed, 100)) * CLOUD_DRIFT_PER_KMH;
     const angle = windDirection * Math.PI / 180;
     uniforms.cloudOffset.value.x -= Math.sin(angle) * speed * step;
     uniforms.cloudOffset.value.y += Math.cos(angle) * speed * step;

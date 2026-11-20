@@ -150,6 +150,10 @@ export const CLOUD_SHADER = `
     vec3 scattered = vec3(0.0);
     vec3 lightDir = normalize(sunDirection + vec3(0.0, 0.08, 0.0));
     float forwardScatter = pow(max(dot(dir, lightDir), 0.0), 12.0);
+    float deck = max(flatness, smoothstep(0.7, 1.0, lowCover));
+    float night = 1.0 - smoothstep(-0.31, -0.14, sunDirection.y);
+    // Preserve texture in dark overcast without raising the whole layer's brightness.
+    float columnContrast = mix(0.08, mix(0.38, 1.1, night), deck);
     for (int i = 0; i < 40; i++) {
       if (float(i) >= marchSteps || transmittance < minTransmission) break;
       vec3 p = dir * (entry + (float(i) + jitter) * stepLength);
@@ -160,11 +164,10 @@ export const CLOUD_SHADER = `
           + cloudDensity(p + lightDir * 1.8) * 0.65;
         float sunlight = exp(-lightDepth * 1.1);
         float h = clamp((p.y - localCloudBase(p)) / layerDepth(), 0.0, 1.0);
-        float deck = max(flatness, smoothstep(0.7, 1.0, lowCover));
         float column = cloudFbm(vec3(p.xz * 0.38 + cloudOffset * 0.7, 22.5));
         // Thick columns receive less diffuse light; this remains visible even
         // when the whole sky is covered and direct sunlight is extinguished.
-        float ambient = mix(mix(0.68, 0.57, deck), 0.8, h) - (column - 0.5) * mix(0.08, 0.38, deck);
+        float ambient = mix(mix(0.68, 0.57, deck), 0.8, h) - (column - 0.5) * columnContrast;
         vec3 lighting = cloudColor * (ambient + sunlight * 0.18) * (1.0 - storm * 0.45);
         lighting += sunColor * sunlight * forwardScatter * daylight * (1.0 - haze) * 0.035;
         if (moonScatter.b > 0.0) {
